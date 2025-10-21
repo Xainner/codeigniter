@@ -1,0 +1,56 @@
+# ==============================
+# .htaccess optimizado en raíz
+# ==============================
+
+# Activa el motor de reescritura
+RewriteEngine On
+
+# Permite acceso directo a archivos y carpetas esenciales
+RewriteCond %{REQUEST_URI} !^/(index\.php|robots\.txt|sitemap\.xml|assets|favicon\.ico)
+
+# Si el archivo o directorio existe, no lo reescribas
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirige todas las demás solicitudes a index.php
+RewriteRule ^(.*)$ index.php/$1 [L,QSA]
+
+# ==============================
+# Seguridad básica
+# ==============================
+
+# Deshabilita listado de directorios
+Options -Indexes
+
+# Oculta el archivo .htaccess
+<Files .htaccess>
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Protege archivos sensibles
+<FilesMatch "(composer\.json|composer\.lock|\.env|\.gitignore|\.git)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ==============================
+# Rendimiento
+# ==============================
+
+# Habilita compresión gzip
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Cache de recursos estáticos
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+</IfModule>
