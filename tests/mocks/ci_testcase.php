@@ -398,4 +398,24 @@ class CI_TestCase extends \PHPUnit\Framework\TestCase {
 			parent::setExpectedException($exception_class, $exception_message, $exception_code);
 		}
 	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * PHPUnit compatibility shim for assertObjectHasProperty
+	 *
+	 * assertObjectHasAttribute() is deprecated in PHPUnit 9.6+ and removed in PHPUnit 10.
+	 * assertObjectHasProperty() was added in PHPUnit 9.6.
+	 */
+	public function assertObjectHasPropertyShim($propertyName, $object, $message = '')
+	{
+		if (method_exists($this, 'assertObjectHasProperty'))
+		{
+			$this->assertObjectHasProperty($propertyName, $object, $message);
+		}
+		else
+		{
+			$this->assertObjectHasAttribute($propertyName, $object, $message);
+		}
+	}
 }
