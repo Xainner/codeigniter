@@ -1,3 +1,3 @@
 <?php
-$auth_variant = 'forgot_password';
+$auth_variant = 'register';
 require APPPATH . 'views/auth/auth_template.php';
