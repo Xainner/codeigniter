@@ -161,7 +161,10 @@ class Input_test extends CI_TestCase {
 	public function test_fetch_from_array()
 	{
 		$reflection = new ReflectionMethod($this->input, '_fetch_from_array');
-		$reflection->setAccessible(TRUE);
+		if (PHP_VERSION_ID < 80100)
+		{
+			$reflection->setAccessible(TRUE);
+		}
 
 		$data = array(
 			'foo' => 'bar',
@@ -259,7 +262,10 @@ class Input_test extends CI_TestCase {
 	public function test_ip_address()
 	{
 		$reflection = new ReflectionProperty($this->input, 'ip_address');
-		$reflection->setAccessible(TRUE);
+		if (PHP_VERSION_ID < 80100)
+		{
+			$reflection->setAccessible(TRUE);
+		}
 
 		$reflection->setValue($this->input, '127.0.0.1');
 		$this->assertEquals('127.0.0.1', $this->input->ip_address());

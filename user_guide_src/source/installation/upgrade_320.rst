@@ -24,45 +24,17 @@ may be at least runnable, we strongly discourage you from using any PHP versions
 the ones listed on the `PHP.net Supported Versions <https://secure.php.net/supported-versions.php>`_
 page.
 
-Step 3: Remove calls to ``CI_Model::__construct()``
-===================================================
+Step 3: Calls to ``CI_Model::__construct()`` (optional cleanup)
+===============================================================
 
 The class constructor for ``CI_Model`` never contained vital code or useful
 logic, only a single line to log a message. A change in CodeIgniter 3.1.7
 moved this log message elsewhere and that naturally made the constructor
-completely unnecessary. However, it was left in place to avoid immedate BC
-breaks in a minor release.
+completely unnecessary.
 
-In version 3.2.0, that constructor is entirely removed, which would result
-in fatal errors on attempts to call it. Particularly in code like this:
-::
-
-	class Some_model extends CI_Model {
-
-		public function __construct()
-		{
-			parent::__construct(); // calls CI_Model::__construct()
-
-			do_some_other_thing();
-		}
-	}
-
-All you need to do is remove that ``parent::__construct()`` call. On a side
-note, the following seems to be a very common practice:
-::
-
-	class Some_class extends CI_Something {
-
-		public function __construct()
-		{
-			parent::__construct();
-		}
-	}
-
-Please, do NOT do this! It's pointless; it serves no purpose and doesn't do
-anything. If a parent class has a ``__construct()`` method, it will be
-inherited by all its child classes and will execute just fine - you DON'T
-have to explicitly call it unless you want to extend its logic.
+The constructor is kept as an empty method for backwards compatibility, so
+existing code calling ``parent::__construct()`` will continue to work.
+However, such calls are unnecessary and can be safely removed.
 
 Step 4: Change database connection handling
 ===========================================
@@ -206,9 +178,6 @@ CodeIgniter versions that have been removed in 3.2.0:
 - 'sqlite' database driver (no longer shipped with PHP 5.4+; 'sqlite3' is still available)
 
 - ``CI_Input::is_cli_request()`` (use :php:func:`is_cli()` instead)
-- ``CI_Router::fetch_directory()`` (use ``CI_Router::$directory`` instead)
-- ``CI_Router::fetch_class()`` (use ``CI_Router::$class`` instead)
-- ``CI_Router::fetch_method()`` (use ``CI_Router::$method`` instead)
 - ``CI_Config::system_url()`` (encourages insecure practices)
 - ``CI_Form_validation::prep_for_form()`` (the *prep_for_form* rule)
 
@@ -219,18 +188,10 @@ CodeIgniter versions that have been removed in 3.2.0:
 - ``nbs()`` :doc:`HTML Helper <../helpers/html_helper>` function (use ``str_repeat()`` with ``'&nbsp;'`` instead)
 - ``trim_slashes()`` :doc:`String Helper <../helpers/string_helper>` function (use ``trim()`` with ``'/'`` instead)
 - ``repeater()`` :doc:`String Helper <../helpers/string_helper>` function (use ``str_repeat()`` instead)
-- ``read_file()`` :doc:`File Helper <../helpers/file_helper>` function (use ``file_get_contents()`` instead)
 - ``form_prep()`` :doc:`Form Helper <../helpers/form_helper>` function (use :php:func:`html_escape()` instead)
 
 - The entire *Encrypt Library* (the newer :doc:`Encryption Library <../libraries/encryption>` is still available)
-- The entire *Cart Library* (an archived version is available on GitHub: `bcit-ci/ci3-cart-library <https://github.com/bcit-ci/ci3-cart-library>`_)
 - The entire *Javascript Library* (it was always experimental in the first place)
-
-- The entire *Email Helper*, which only had two functions:
-
-   - ``valid_email()`` (use ``filter_var($email, FILTER_VALIDATE_EMAIL)`` instead)
-   - ``send_email()`` (use ``mail()`` instead)
-
 - The entire *Smiley Helper* (an archived version is available on GitHub: `bcit-ci/ci3-smiley-helper <https://github.com/bcit-ci/ci3-smiley-helper>`_)
 
 - The ``$_after`` parameter from :doc:`Database Forge <../database/forge>` method ``add_column()``.

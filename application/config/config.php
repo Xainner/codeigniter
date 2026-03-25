@@ -239,6 +239,20 @@ $config['log_filename'] = '';
 
 /*
 |--------------------------------------------------------------------------
+| Log File Extension (DEPRECATED)
+|--------------------------------------------------------------------------
+|
+| This option is deprecated. Use 'log_filename' instead.
+| Kept for backward compatibility with CI 3.1.x configurations.
+|
+| If 'log_filename' is set, this option is ignored.
+| Example: 'txt' or 'log' (without leading dot)
+|
+*/
+$config['log_file_extension'] = '';
+
+/*
+|--------------------------------------------------------------------------
 | Log File Permissions
 |--------------------------------------------------------------------------
 |
