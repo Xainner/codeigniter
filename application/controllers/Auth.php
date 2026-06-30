@@ -15,7 +15,6 @@ class Auth extends CI_Controller
 		$this->load->database();
 		$this->load->library(['ion_auth', 'form_validation']);
 		$this->load->helper(['url', 'language']);
-		$this->load->model('Company_model');
 
 		$this->form_validation->set_error_delimiters($this->config->item('error_start_delimiter', 'ion_auth'), $this->config->item('error_end_delimiter', 'ion_auth'));
 
@@ -66,9 +65,6 @@ class Auth extends CI_Controller
 	public function login()
 	{
 		$this->data['title'] = $this->lang->line('login_heading');
-
-		// Get company data
-		$this->data['company'] = $this->Company_model->get_company();
 
 		// Check if request is AJAX
 		$is_ajax = $this->input->is_ajax_request();
@@ -224,9 +220,6 @@ class Auth extends CI_Controller
 	public function forgot_password()
 	{
 		$this->data['title'] = $this->lang->line('forgot_password_heading');
-		
-		// Get company data
-		$this->data['company'] = $this->Company_model->get_company();
 
 		// Check if request is AJAX
 		$is_ajax = $this->input->is_ajax_request();
@@ -621,9 +614,6 @@ class Auth extends CI_Controller
 	public function register()
 	{
 		$this->data['title'] = $this->lang->line('create_user_heading');
-
-		// Get company data
-		$this->data['company'] = $this->Company_model->get_company();
 
 		// Check if request is AJAX
 		$is_ajax = $this->input->is_ajax_request();

@@ -6,398 +6,498 @@
     <title><?php echo html_escape($title ?? 'Acceso'); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <?php
-        $companyData = (isset($company) && is_array($company) && (isset($company['name']) || isset($company['logo']) || isset($company['description'])))
-            ? $company
-            : [];
-        $companyName = trim($companyData['name'] ?? 'Mi Empresa');
-        $companyDescription = trim($companyData['description'] ?? '');
-        $companyLogo = trim($companyData['logo'] ?? '');
+        $auth_variant = $auth_variant ?? 'login';
         $messageText = trim(strip_tags((string) ($message ?? '')));
-        $brandInitials = '';
-
-        foreach (preg_split('/\s+/', $companyName) as $word) {
-            if ($word !== '') {
-                $brandInitials .= strtoupper(substr($word, 0, 1));
-            }
-            if (strlen($brandInitials) >= 2) {
-                break;
-            }
-        }
-
-        if ($brandInitials === '') {
-            $brandInitials = 'ME';
-        }
 
         $config = [
             'login' => [
-                'eyebrow' => 'Acceso seguro',
+                'eyebrow' => 'Acceso',
                 'heading' => 'Iniciar sesion',
-                'description' => 'Accede a tu cuenta para continuar con tu trabajo.',
+                'description' => 'Ingresa tus credenciales para continuar.',
                 'form_id' => 'loginForm',
                 'endpoint' => base_url('auth/login'),
-                'success_title' => 'Bienvenido',
+                'success_title' => 'Sesion iniciada',
+                'submit' => 'Iniciar sesion',
+                'loading' => 'Validando...',
+                'ajax' => TRUE,
             ],
             'register' => [
-                'eyebrow' => 'Nuevo acceso',
+                'eyebrow' => 'Registro',
                 'heading' => 'Crear cuenta',
-                'description' => 'Registra tus datos para comenzar a usar la plataforma.',
+                'description' => 'Completa tus datos para crear un acceso nuevo.',
                 'form_id' => 'registerForm',
                 'endpoint' => base_url('auth/register'),
-                'success_title' => 'Registro exitoso',
+                'success_title' => 'Cuenta creada',
+                'submit' => 'Crear cuenta',
+                'loading' => 'Creando cuenta...',
+                'ajax' => TRUE,
             ],
             'forgot_password' => [
                 'eyebrow' => 'Recuperacion',
-                'heading' => 'Recuperar contrasena',
-                'description' => 'Ingresa tu correo y te enviaremos un enlace para restablecer el acceso.',
+                'heading' => 'Recuperar acceso',
+                'description' => 'Escribe tu dato de acceso y te enviaremos las instrucciones.',
                 'form_id' => 'forgotForm',
                 'endpoint' => base_url('auth/forgot_password'),
-                'success_title' => 'Enlace enviado',
+                'success_title' => 'Solicitud recibida',
+                'submit' => 'Enviar instrucciones',
+                'loading' => 'Enviando...',
+                'ajax' => TRUE,
+            ],
+            'reset_password' => [
+                'eyebrow' => 'Nueva contrasena',
+                'heading' => 'Restablecer acceso',
+                'description' => 'Define una contrasena nueva para tu cuenta.',
+                'form_id' => 'resetPasswordForm',
+                'endpoint' => base_url('auth/reset_password/' . ($code ?? '')),
+                'success_title' => 'Contrasena actualizada',
+                'submit' => 'Actualizar contrasena',
+                'loading' => 'Actualizando...',
+                'ajax' => FALSE,
             ],
         ];
 
         $view = $config[$auth_variant] ?? $config['login'];
+        $identityType = (($type ?? 'email') !== 'email') ? 'text' : 'email';
+        $identityLabel = (($type ?? 'email') !== 'email') ? 'Usuario o correo' : 'Correo electronico';
     ?>
     <style>
         :root {
-            --brand-navy: #002166;
-            --brand-orange: #dd4814;
-            --brand-gold: #f6a623;
-            --brand-cream: #fff8f2;
-            --ink: #163153;
-            --muted: #66758a;
-            --line: rgba(0, 33, 102, 0.12);
-            --shadow: 0 30px 80px rgba(0, 33, 102, 0.22);
+            --surface: #ffffff;
+            --page: #f8fafc;
+            --ink: #111827;
+            --muted: #5b6472;
+            --line: #d9dee7;
+            --line-strong: #b9c2d0;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-soft: #eef2ff;
+            --action: #059669;
+            --action-hover: #047857;
+            --danger: #b42318;
+            --danger-soft: #fff1f2;
+            --focus: rgba(79, 70, 229, 0.18);
         }
+
         * { box-sizing: border-box; }
+
+        html,
         body {
-            min-height: 100vh;
+            min-height: 100%;
+        }
+
+        body {
             margin: 0;
-            font-family: 'Poppins', sans-serif;
+            min-height: 100svh;
+            overflow-x: hidden;
+            font-family: 'Plus Jakarta Sans', Arial, sans-serif;
             color: var(--ink);
-            background: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
+            background:
+                linear-gradient(var(--line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--line) 1px, transparent 1px),
+                var(--page);
+            background-size: 48px 48px;
+            background-position: center;
         }
-        .auth-shell { position: relative; z-index: 1; width: 100%; max-width: 1080px; }
-        .auth-card {
-            background: #ffffff;
-            border: 1px solid rgba(0, 33, 102, 0.08);
-            border-radius: 32px;
-            box-shadow: 0 24px 70px rgba(0, 33, 102, 0.08);
-            overflow: hidden;
-            max-width: 640px;
-            margin: 0 auto;
-        }
-        .auth-showcase {
-            padding: 48px 42px 24px;
-            background: #ffffff;
-            color: var(--brand-navy);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 18px;
-            text-align: center;
-            border-bottom: 1px solid rgba(0, 33, 102, 0.08);
-        }
-        .brand-lockup,
-        .showcase-copy { width: 100%; }
-        .brand-logo {
-            width: 96px;
-            height: 96px;
-            border-radius: 24px;
-            background: #ffffff;
-            border: 1px solid rgba(0, 33, 102, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            margin: 0 auto 20px;
-            box-shadow: 0 16px 35px rgba(0, 33, 102, 0.08);
-        }
-        .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
-        .brand-fallback {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.65rem;
+
+        a {
+            color: var(--primary);
             font-weight: 700;
-            letter-spacing: 0.08em;
+            text-decoration: none;
+            transition: color 180ms ease;
         }
-        .brand-name {
-            margin: 0 0 8px;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: clamp(2rem, 4vw, 2.7rem);
-            line-height: 1;
-            text-align: center;
+
+        a:hover { color: var(--primary-hover); }
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible {
+            outline: 3px solid var(--focus);
+            outline-offset: 2px;
         }
-        .brand-description,
-        .showcase-copy p {
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.7;
-            text-align: center;
+
+        .auth-shell {
+            width: 100%;
+            min-height: 100svh;
+            display: grid;
+            place-items: center;
+            padding: 32px 18px;
         }
-        .showcase-copy span {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 14px;
-            border-radius: 999px;
-            background: rgba(221, 72, 20, 0.08);
-            font-size: 0.9rem;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            margin-bottom: 16px;
-            color: var(--brand-orange);
+
+        .auth-card {
+            width: min(100%, 520px);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
         }
-        .showcase-copy h2 {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: clamp(1.4rem, 3vw, 1.8rem);
-            margin-bottom: 12px;
-            color: var(--brand-navy);
+
+        .auth-register .auth-card {
+            width: min(100%, 760px);
         }
+
         .auth-panel {
-            padding: 44px 40px;
-            background: #ffffff;
+            padding: 40px;
         }
+
+        .auth-header {
+            margin-bottom: 30px;
+        }
+
         .panel-eyebrow {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            font-size: 0.82rem;
+            min-height: 28px;
+            margin-bottom: 14px;
+            padding: 4px 10px;
+            border: 1px solid #c7d2fe;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            color: var(--primary-hover);
+            font-size: 0.76rem;
             font-weight: 700;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: var(--brand-orange);
-            margin-bottom: 12px;
         }
+
         .panel-title {
-            font-family: 'Space Grotesk', sans-serif;
+            margin: 0;
+            color: var(--ink);
             font-size: clamp(1.8rem, 4vw, 2.35rem);
-            margin: 0 0 10px;
-            color: var(--brand-navy);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: 0;
         }
+
         .panel-description {
+            margin: 12px 0 0;
+            max-width: 36rem;
             color: var(--muted);
-            margin-bottom: 28px;
+            font-size: 0.98rem;
             line-height: 1.65;
         }
+
         .auth-alert {
-            border: 1px solid rgba(221, 72, 20, 0.2);
-            background: rgba(221, 72, 20, 0.08);
-            color: #8d2c10;
-            border-radius: 18px;
-            padding: 14px 16px;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
+            margin-bottom: 22px;
+            border: 1px solid #fecdd3;
+            border-radius: 8px;
+            background: var(--danger-soft);
+            color: var(--danger);
+            padding: 13px 14px;
+            font-size: 0.93rem;
+            line-height: 1.55;
         }
-        .form-group { margin-bottom: 18px; }
+
+        .auth-form {
+            margin: 0;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-group-full {
+            grid-column: 1 / -1;
+        }
+
         .form-label {
-            font-size: 0.92rem;
-            font-weight: 600;
+            display: block;
             margin-bottom: 8px;
-            color: var(--brand-navy);
-        }
-        .form-control {
-            border-radius: 18px;
-            border: 1px solid var(--line);
-            padding: 14px 16px;
-            min-height: 54px;
             color: var(--ink);
-            box-shadow: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+            font-size: 0.9rem;
+            font-weight: 700;
+            line-height: 1.3;
         }
+
+        .form-meta {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .form-control {
+            display: block;
+            width: 100%;
+            min-height: 48px;
+            border: 1px solid var(--line-strong);
+            border-radius: 8px;
+            background: #ffffff;
+            color: var(--ink);
+            padding: 12px 13px;
+            font: inherit;
+            line-height: 1.4;
+            transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+        }
+
+        .form-control::placeholder {
+            color: #8a94a6;
+        }
+
+        .form-control:hover {
+            border-color: #98a2b3;
+        }
+
         .form-control:focus {
-            border-color: rgba(221, 72, 20, 0.55);
-            box-shadow: 0 0 0 4px rgba(221, 72, 20, 0.12);
-            transform: translateY(-1px);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--focus);
         }
-        .form-check {
+
+        .form-options {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 22px;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 2px 0 22px;
             color: var(--muted);
+            font-size: 0.9rem;
         }
+
+        .form-check {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            min-width: 0;
+        }
+
         .form-check-input {
             width: 18px;
             height: 18px;
-            margin-top: 0;
-            border-color: rgba(0, 33, 102, 0.26);
+            margin: 0;
+            border: 1px solid var(--line-strong);
+            border-radius: 4px;
+            accent-color: var(--primary);
+            cursor: pointer;
         }
-        .form-check-input:checked {
-            background-color: var(--brand-orange);
-            border-color: var(--brand-orange);
+
+        .form-check-label {
+            cursor: pointer;
+            user-select: none;
         }
-        .btn-auth {
+
+        .auth-button {
+            display: inline-flex;
             width: 100%;
-            min-height: 56px;
-            border: 0;
-            border-radius: 18px;
+            min-height: 50px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--action);
+            border-radius: 8px;
+            background: var(--action);
+            color: #ffffff;
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.95rem;
             font-weight: 700;
-            letter-spacing: 0.02em;
-            color: #fff;
-            background: linear-gradient(135deg, var(--brand-orange) 0%, #f26b28 56%, var(--brand-gold) 100%);
-            box-shadow: 0 16px 34px rgba(221, 72, 20, 0.28);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            line-height: 1;
+            transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
         }
-        .btn-auth:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 20px 38px rgba(221, 72, 20, 0.32);
+
+        .auth-button:hover {
+            border-color: var(--action-hover);
+            background: var(--action-hover);
+            color: #ffffff;
         }
+
+        .auth-button:disabled {
+            cursor: wait;
+            opacity: 0.72;
+        }
+
         .auth-links {
-            margin-top: 22px;
             display: grid;
             gap: 10px;
+            margin-top: 24px;
+            color: var(--muted);
+            font-size: 0.92rem;
             text-align: center;
         }
-        .auth-links a {
-            color: var(--brand-navy);
-            font-weight: 600;
-            text-decoration: none;
+
+        .auth-links span {
+            color: var(--muted);
         }
-        .auth-links a:hover { color: var(--brand-orange); }
-        .auth-links span { color: var(--muted); }
-        @media (max-width: 991px) {
-            .auth-showcase { padding: 36px 28px; }
-            .auth-panel { padding: 34px 26px; }
+
+        @media (max-width: 720px) {
+            .auth-panel {
+                padding: 30px 22px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
         }
-        @media (max-width: 575px) {
-            body { padding: 16px; }
-            .auth-showcase,
-            .auth-panel { padding: 28px 20px; }
-            .brand-logo { width: 72px; height: 72px; border-radius: 20px; }
+
+        @media (max-width: 420px) {
+            .auth-shell {
+                padding: 18px 12px;
+            }
+
+            .auth-panel {
+                padding: 24px 18px;
+            }
+
+            .form-options {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .panel-title {
+                font-size: 1.7rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+            }
         }
     </style>
 </head>
-<body>
+<body class="auth-page auth-<?php echo html_escape($auth_variant); ?>">
     <main class="auth-shell">
-        <section class="auth-card">
-            <aside class="auth-showcase">
-                <div class="brand-lockup">
-                    <div class="brand-logo">
-                        <?php if ($companyLogo !== ''): ?>
-                            <img src="<?php echo base_url($companyLogo); ?>" alt="<?php echo html_escape($companyName); ?>">
-                        <?php else: ?>
-                            <span class="brand-fallback"><?php echo html_escape($brandInitials); ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <h1 class="brand-name"><?php echo html_escape($companyName); ?></h1>
-                    <?php if ($companyDescription !== ''): ?>
-                        <p class="brand-description"><?php echo html_escape($companyDescription); ?></p>
-                    <?php endif; ?>
-                </div>
-
-                <div class="showcase-copy">
-                    <span>Plataforma oficial</span>
-                    <h2>Una experiencia de acceso unificada, clara y con presencia visual.</h2>
-                    <p>Las vistas de autenticacion comparten una misma base, con el logo y nombre de la empresa como protagonistas.</p>
-                </div>
-            </aside>
-
+        <section class="auth-card" aria-labelledby="auth-title">
             <section class="auth-panel">
-                <div class="panel-eyebrow"><?php echo html_escape($view['eyebrow']); ?></div>
-                <h2 class="panel-title"><?php echo html_escape($view['heading']); ?></h2>
-                <p class="panel-description"><?php echo html_escape($view['description']); ?></p>
+                <header class="auth-header">
+                    <div class="panel-eyebrow"><?php echo html_escape($view['eyebrow']); ?></div>
+                    <h1 class="panel-title" id="auth-title"><?php echo html_escape($view['heading']); ?></h1>
+                    <p class="panel-description"><?php echo html_escape($view['description']); ?></p>
+                </header>
 
                 <?php if ($messageText !== ''): ?>
-                    <div class="auth-alert"><?php echo html_escape($messageText); ?></div>
+                    <div class="auth-alert" role="alert"><?php echo html_escape($messageText); ?></div>
                 <?php endif; ?>
 
                 <?php if ($auth_variant === 'login'): ?>
-                    <form id="loginForm">
+                    <form class="auth-form" id="loginForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
                         <div class="form-group">
                             <label class="form-label" for="identity">Correo o usuario</label>
-                            <input type="text" class="form-control" id="identity" name="identity" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('identity')); ?>" required>
+                            <input type="text" class="form-control" id="identity" name="identity" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('identity')); ?>" autocomplete="username" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="password">Contrasena</label>
-                            <input type="password" class="form-control" id="password" name="password" placeholder="Ingresa tu contrasena" required>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Ingresa tu contrasena" autocomplete="current-password" required>
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="remember" name="remember" value="1">
-                            <label class="form-check-label" for="remember">Recordarme en este equipo</label>
+                        <div class="form-options">
+                            <label class="form-check" for="remember">
+                                <input class="form-check-input" type="checkbox" id="remember" name="remember" value="1">
+                                <span class="form-check-label">Recordarme</span>
+                            </label>
+                            <a href="<?php echo base_url('auth/forgot_password'); ?>">Olvide mi contrasena</a>
                         </div>
-                        <button type="submit" class="btn btn-auth">Iniciar sesion</button>
+                        <button type="submit" class="auth-button" data-submit-button data-loading-label="<?php echo html_escape($view['loading']); ?>"><?php echo html_escape($view['submit']); ?></button>
                     </form>
 
                     <div class="auth-links">
-                        <a href="<?php echo base_url('auth/forgot_password'); ?>">Olvidaste tu contrasena</a>
-                        <span>No tienes cuenta? <a href="<?php echo base_url('auth/register'); ?>">Registrate</a></span>
+                        <span>No tienes cuenta? <a href="<?php echo base_url('auth/register'); ?>">Crear cuenta</a></span>
                     </div>
                 <?php elseif ($auth_variant === 'register'): ?>
-                    <form id="registerForm">
-                        <div class="row">
-                            <div class="col-md-6 form-group">
+                    <form class="auth-form" id="registerForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
+                        <div class="form-grid">
+                            <div class="form-group">
                                 <label class="form-label" for="first_name">Nombre</label>
-                                <input type="text" class="form-control" id="first_name" name="first_name" placeholder="Tu nombre" value="<?php echo html_escape(set_value('first_name')); ?>" required>
+                                <input type="text" class="form-control" id="first_name" name="first_name" placeholder="Nombre" value="<?php echo html_escape(set_value('first_name')); ?>" autocomplete="given-name" required>
                             </div>
-                            <div class="col-md-6 form-group">
+                            <div class="form-group">
                                 <label class="form-label" for="last_name">Apellido</label>
-                                <input type="text" class="form-control" id="last_name" name="last_name" placeholder="Tu apellido" value="<?php echo html_escape(set_value('last_name')); ?>" required>
+                                <input type="text" class="form-control" id="last_name" name="last_name" placeholder="Apellido" value="<?php echo html_escape(set_value('last_name')); ?>" autocomplete="family-name" required>
                             </div>
                         </div>
                         <?php if (($identity_column ?? 'email') !== 'email'): ?>
                             <div class="form-group">
                                 <label class="form-label" for="identity">Usuario</label>
-                                <input type="text" class="form-control" id="identity" name="identity" placeholder="Elige un usuario" value="<?php echo html_escape(set_value('identity')); ?>" required>
+                                <input type="text" class="form-control" id="identity" name="identity" placeholder="usuario" value="<?php echo html_escape(set_value('identity')); ?>" autocomplete="username" required>
                             </div>
                         <?php endif; ?>
                         <div class="form-group">
                             <label class="form-label" for="email">Correo electronico</label>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('email')); ?>" required>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('email')); ?>" autocomplete="email" required>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 form-group">
-                                <label class="form-label" for="company">Empresa</label>
-                                <input type="text" class="form-control" id="company" name="company" placeholder="Nombre de empresa" value="<?php echo html_escape(set_value('company')); ?>">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="company">Organizacion <span class="form-meta">opcional</span></label>
+                                <input type="text" class="form-control" id="company" name="company" placeholder="Nombre de organizacion" value="<?php echo html_escape(set_value('company')); ?>" autocomplete="organization">
                             </div>
-                            <div class="col-md-6 form-group">
-                                <label class="form-label" for="phone">Telefono</label>
-                                <input type="text" class="form-control" id="phone" name="phone" placeholder="Tu telefono" value="<?php echo html_escape(set_value('phone')); ?>">
+                            <div class="form-group">
+                                <label class="form-label" for="phone">Telefono <span class="form-meta">opcional</span></label>
+                                <input type="text" class="form-control" id="phone" name="phone" placeholder="Telefono" value="<?php echo html_escape(set_value('phone')); ?>" autocomplete="tel">
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 form-group">
+                        <div class="form-grid">
+                            <div class="form-group">
                                 <label class="form-label" for="password">Contrasena</label>
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Crea una contrasena" required>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Minimo 8 caracteres" autocomplete="new-password" required>
                             </div>
-                            <div class="col-md-6 form-group">
+                            <div class="form-group">
                                 <label class="form-label" for="password_confirm">Confirmar contrasena</label>
-                                <input type="password" class="form-control" id="password_confirm" name="password_confirm" placeholder="Repite la contrasena" required>
+                                <input type="password" class="form-control" id="password_confirm" name="password_confirm" placeholder="Repite la contrasena" autocomplete="new-password" required>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-auth">Crear cuenta</button>
+                        <button type="submit" class="auth-button" data-submit-button data-loading-label="<?php echo html_escape($view['loading']); ?>"><?php echo html_escape($view['submit']); ?></button>
                     </form>
 
                     <div class="auth-links">
-                        <span>Ya tienes cuenta? <a href="<?php echo base_url('auth/login'); ?>">Inicia sesion</a></span>
+                        <span>Ya tienes cuenta? <a href="<?php echo base_url('auth/login'); ?>">Iniciar sesion</a></span>
                     </div>
                 <?php elseif ($auth_variant === 'forgot_password'): ?>
-                    <form id="forgotForm">
+                    <form class="auth-form" id="forgotForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
                         <div class="form-group">
-                            <label class="form-label" for="identity"><?php echo (($type ?? 'email') !== 'email') ? 'Usuario o correo' : 'Correo electronico'; ?></label>
-                            <input type="<?php echo (($type ?? 'email') !== 'email') ? 'text' : 'email'; ?>" class="form-control" id="identity" name="identity" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('identity')); ?>" required>
+                            <label class="form-label" for="identity"><?php echo html_escape($identityLabel); ?></label>
+                            <input type="<?php echo html_escape($identityType); ?>" class="form-control" id="identity" name="identity" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('identity')); ?>" autocomplete="email" required>
                         </div>
-                        <button type="submit" class="btn btn-auth">Enviar enlace</button>
+                        <button type="submit" class="auth-button" data-submit-button data-loading-label="<?php echo html_escape($view['loading']); ?>"><?php echo html_escape($view['submit']); ?></button>
                     </form>
 
                     <div class="auth-links">
-                        <a href="<?php echo base_url('auth/login'); ?>">Volver al inicio de sesion</a>
+                        <a href="<?php echo base_url('auth/login'); ?>">Volver a iniciar sesion</a>
+                    </div>
+                <?php elseif ($auth_variant === 'reset_password'): ?>
+                    <form class="auth-form" id="resetPasswordForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="false">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="new_password"><?php echo sprintf(lang('reset_password_new_password_label'), $min_password_length); ?></label>
+                                <input type="password" class="form-control" id="new_password" name="new" placeholder="Nueva contrasena" autocomplete="new-password" pattern="<?php echo html_escape('^.{' . $min_password_length . '}.*$'); ?>" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="new_password_confirm"><?php echo lang('reset_password_new_password_confirm_label'); ?></label>
+                                <input type="password" class="form-control" id="new_password_confirm" name="new_confirm" placeholder="Repite la contrasena" autocomplete="new-password" pattern="<?php echo html_escape('^.{' . $min_password_length . '}.*$'); ?>" required>
+                            </div>
+                        </div>
+                        <input type="hidden" name="user_id" value="<?php echo html_escape($user_id['value'] ?? ''); ?>">
+                        <?php if (isset($csrf) && is_array($csrf)): ?>
+                            <?php foreach ($csrf as $csrfName => $csrfValue): ?>
+                                <input type="hidden" name="<?php echo html_escape($csrfName); ?>" value="<?php echo html_escape($csrfValue); ?>">
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        <button type="submit" class="auth-button" data-submit-button><?php echo html_escape($view['submit']); ?></button>
+                    </form>
+
+                    <div class="auth-links">
+                        <a href="<?php echo base_url('auth/login'); ?>">Volver a iniciar sesion</a>
                     </div>
                 <?php endif; ?>
+
             </section>
         </section>
     </main>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
     <script>
         function stripHtml(input) {
@@ -405,23 +505,39 @@
         }
 
         $(document).ready(function() {
-            $('#<?php echo $view['form_id']; ?>').on('submit', function(e) {
+            var form = $('#<?php echo $view['form_id']; ?>');
+
+            if (form.attr('data-ajax-form') !== 'true') {
+                return;
+            }
+
+            form.on('submit', function(e) {
                 e.preventDefault();
 
+                var currentForm = $(this);
+                var submitButton = currentForm.find('[data-submit-button]').first();
+                var originalLabel = submitButton.text();
+                var loadingLabel = submitButton.data('loading-label') || 'Procesando...';
+
+                submitButton.prop('disabled', true).text(loadingLabel);
+
                 $.ajax({
-                    url: '<?php echo $view['endpoint']; ?>',
+                    url: currentForm.attr('action'),
                     type: 'POST',
-                    data: $(this).serialize(),
+                    data: currentForm.serialize(),
                     dataType: 'json',
+                    complete: function() {
+                        submitButton.prop('disabled', false).text(originalLabel);
+                    },
                     success: function(response) {
                         var responseMessage = stripHtml(response.message) || 'Proceso completado correctamente.';
 
                         if (response.success) {
                             Swal.fire({
                                 icon: 'success',
-                                title: '<?php echo $view['success_title']; ?>',
+                                title: '<?php echo html_escape($view['success_title']); ?>',
                                 text: responseMessage,
-                                confirmButtonColor: '#dd4814'
+                                confirmButtonColor: '#4f46e5'
                             }).then(function() {
                                 if (response.redirect) {
                                     window.location.href = response.redirect;
@@ -432,7 +548,7 @@
                                 icon: 'error',
                                 title: 'No fue posible continuar',
                                 text: responseMessage || 'Revisa la informacion e intentalo nuevamente.',
-                                confirmButtonColor: '#002166'
+                                confirmButtonColor: '#4f46e5'
                             });
                         }
                     },
@@ -441,7 +557,7 @@
                             icon: 'error',
                             title: 'Error inesperado',
                             text: 'Ocurrio un problema al procesar la solicitud. Intentalo otra vez.',
-                            confirmButtonColor: '#002166'
+                            confirmButtonColor: '#4f46e5'
                         });
                     }
                 });
