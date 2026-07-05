@@ -66,7 +66,6 @@
     <style>
         :root {
             --surface: #ffffff;
-            --page: #f8fafc;
             --ink: #111827;
             --muted: #5b6472;
             --line: #d9dee7;
@@ -94,12 +93,7 @@
             overflow-x: hidden;
             font-family: 'Plus Jakarta Sans', Arial, sans-serif;
             color: var(--ink);
-            background:
-                linear-gradient(var(--line) 1px, transparent 1px),
-                linear-gradient(90deg, var(--line) 1px, transparent 1px),
-                var(--page);
-            background-size: 48px 48px;
-            background-position: center;
+            background: transparent;
         }
 
         a {
