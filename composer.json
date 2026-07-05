@@ -1,32 +1,13 @@
 {
-	"description": "Actively maintained CodeIgniter 3 fork with support for PHP 5.4 - PHP 8.5 (and beyond). Fully backward compatible.",
-	"name": "pocketarc/codeigniter",
+	"description": "Base project for CodeIgniter 3 with IonAuth authentication views and flows.",
+	"name": "xainner/codeigniter-ionauth-base",
 	"type": "project",
-	"homepage": "https://github.com/pocketarc/codeigniter",
+	"homepage": "https://github.com/Xainner/codeigniter",
 	"license": "MIT",
 	"support": {
-		"source": "https://github.com/pocketarc/codeigniter"
+		"source": "https://github.com/Xainner/codeigniter"
 	},
 	"require": {
-		"php": ">=5.4.8"
-	},
-	"suggest": {
-		"paragonie/random_compat": "Provides better randomness in PHP 5.x"
-	},
-	"scripts": {
-		"test:coverage": [
-			"@putenv XDEBUG_MODE=coverage",
-			"phpunit --color=always --coverage-text --configuration tests/travis/sqlite.phpunit.xml"
-		],
-		"post-install-cmd": [
-			"sed -i s/name{0}/name[0]/ vendor/mikey179/vfsstream/src/main/php/org/bovigo/vfs/vfsStream.php"
-		],
-		"post-update-cmd": [
-			"sed -i s/name{0}/name[0]/ vendor/mikey179/vfsstream/src/main/php/org/bovigo/vfs/vfsStream.php"
-		]
-	},
-	"require-dev": {
-		"mikey179/vfsstream": "1.6.*",
-		"phpunit/phpunit": "4.* || 5.* || 8.* || 9.*"
+		"php": ">=7.2"
 	}
 }
