@@ -34,6 +34,18 @@ Options -Indexes
     Deny from all
 </FilesMatch>
 
+# Bloquea el acceso directo a las carpetas internas de la aplicación
+RedirectMatch 403 ^/(application|system|tests|assets/(?!.*\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|eot))).*$
+
+# Cabeceras de seguridad
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set X-XSS-Protection "1; mode=block"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+</IfModule>
+
 # ==============================
 # Rendimiento
 # ==============================

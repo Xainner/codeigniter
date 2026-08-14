@@ -380,6 +380,7 @@
 
                 <?php if ($auth_variant === 'login'): ?>
                     <form class="auth-form" id="loginForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
+                        <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
                         <div class="form-group">
                             <label class="form-label" for="identity">Correo o usuario</label>
                             <input type="text" class="form-control" id="identity" name="identity" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('identity')); ?>" autocomplete="username" required>
@@ -403,6 +404,7 @@
                     </div>
                 <?php elseif ($auth_variant === 'register'): ?>
                     <form class="auth-form" id="registerForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
+                        <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
                         <div class="form-grid">
                             <div class="form-group">
                                 <label class="form-label" for="first_name">Nombre</label>
@@ -451,6 +453,7 @@
                     </div>
                 <?php elseif ($auth_variant === 'forgot_password'): ?>
                     <form class="auth-form" id="forgotForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
+                        <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
                         <div class="form-group">
                             <label class="form-label" for="identity"><?php echo html_escape($identityLabel); ?></label>
                             <input type="<?php echo html_escape($identityType); ?>" class="form-control" id="identity" name="identity" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('identity')); ?>" autocomplete="email" required>
@@ -463,6 +466,7 @@
                     </div>
                 <?php elseif ($auth_variant === 'reset_password'): ?>
                     <form class="auth-form" id="resetPasswordForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="false">
+                        <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
                         <div class="form-grid">
                             <div class="form-group">
                                 <label class="form-label" for="new_password"><?php echo sprintf(lang('reset_password_new_password_label'), $min_password_length); ?></label>
