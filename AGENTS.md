@@ -1,95 +1,136 @@
 # AGENTS.md
 
-Reglas del proyecto para agentes de IA y desarrolladores.
+Project rules for AI agents and developers.
 
 ## Stack
 
-- **Framework**: CodeIgniter 3.4.2 (fork `pocketarc/codeigniter`)
-- **Auth**: IonAuth (tercer_party en `application/third_party/ion_auth`)
-- **PHP**: >= 7.2 (compatible hasta 8.5)
-- **Email**: PHPMailer vía `application/libraries/MY_Email.php`
-- **API**: `chriskacerguis/codeigniter-restserver` (`application/controllers/Api.php`)
-- **Composer**: `composer_autoload` apunta a `vendor/autoload.php` (raíz)
+- **Framework**: CodeIgniter 3.4.2 (`pocketarc/codeigniter` fork) — never edit `system/`.
+- **Auth**: IonAuth in `application/third_party/ion_auth` (registered as a package in `autoload.php`).
+- **PHP**: >= 7.2, works up to 8.x (dev currently on 8.2).
+- **Email**: PHPMailer 6.9 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API, falls back to native transport if vendor is missing).
+- **API**: `chriskacerguis/codeigniter-restserver` — config in `application/config/rest.php`, example controller `application/controllers/Api.php`.
+- **Composer**: autoloads root `vendor/autoload.php`. `composer.lock` is intentionally gitignored — pin versions in `composer.json` deliberately.
 
-## Flujo de trabajo Git
+## Quick start
 
-### Ramas
+```bash
+composer install
+php -S localhost:8000
+```
 
-- **`main`**: producción estable. Solo acepta merges vía PR.
-- **`develop`**: integración continua. Base para toda nueva funcionalidad.
-- **`feature/<nombre>`**: creada desde `develop` para nueva funcionalidad.
-  Naming: `feature/login-social`, `feature/reportes-ventas`.
-- **`hotfix/<nombre>`**: creada desde `main` para bugs críticos en producción.
+1. Set real values in `application/config/database.php` (committed placeholders: `root`/empty/`testdb`).
+2. Import `database/database.sql` (IonAuth schema + seed admin `admin@admin.com`).
+3. Configure `application/config/email.php` (SMTP) for real email delivery.
+
+Useful URLs: `/auth/login`, `/auth/register`, `/auth/forgot_password`, `/api/ping` (health check).
+
+## Architecture
+
+```
+application/
+  controllers/   Auth (IonAuth flows: login/register/forgot/reset, HTML + AJAX JSON), Api (REST), Welcome
+  models/        (empty today — business logic lives in controllers/libraries)
+  libraries/     MY_Email (PHPMailer transport for CI_Email)
+  core/          (empty — extend CI3 there with MY_ subclasses)
+  config/        database.php, email.php, rest.php, routes.php, config.php (subclass_prefix)
+  views/         auth/ (all auth pages on auth_template.php), errors/, welcome_message.php
+  language/      english/ and spanish/ packs for auth, ion_auth, rest (default language: english)
+  third_party/   ion_auth (library + model + its own config/ion_auth.php)
+database/        database.sql (full base schema) + upgrade_*.sql migrations
+```
+
+Conventions: controllers fill `$this->data` (title, message, per-field input arrays) and render through
+`_render_page()`. REST endpoints are controller methods named `<resource>_<verb>` (e.g. `ping_get`).
+
+## Git workflow
+
+### Branches
+
+- **`main`**: stable production. Merges only via PR. Note: it does not exist on origin yet — the
+  current default branch is `develop`.
+- **`develop`**: continuous integration. Base for all new work.
+- **`feature/<name>`**: branched from `develop` for new features.
+  Naming: `feature/login-social`, `feature/sales-reports`.
+- **`hotfix/<name>`**: branched from `main` for critical production bugs.
   Naming: `hotfix/sql-injection-login`, `hotfix/pass-reset-500`.
 
-### Reglas de merge (obligatorias)
+### Merge rules (mandatory)
 
-- **Nunca** se hace merge/push directo a `main`.
-- Todo cambio se entrega como **Pull Request**.
-- El merge de una PR a `main` **solo** puede ejecutarlo el **dueño del repositorio**
-  tras revisarla y aprobarla.
-- Si el agente o un colaborador crea la PR, debe **quedar pendiente de revisión**
-  y **no** mergearse por sí mismo.
-- El merge a `develop` puede hacerse tras revisión; si el trabajo es de un agente,
-  dejar constancia en la descripción de la PR del alcance y pruebas realizadas.
+- **Never** merge/push directly to `main`.
+- Every change is delivered as a **Pull Request**.
+- Merging a PR into `main` is done **only** by the **repository owner** after review and approval.
+- If an agent or collaborator opens the PR, it **stays pending review** and is **never self-merged**.
+- Merging into `develop` may happen after review; when the work was done by an agent, record scope
+  and tests performed in the PR description.
 
 ### Commits
 
-- Mensajes claros en inglés, formato imperativo:
-  `Add`, `Fix`, `Update`, `Remove`, `Refactor`, `Migrate`.
-- Commits atómicos: una responsabilidad por commit.
-- No commitear secretos, credenciales ni `vendor/`.
+- Clear messages in English, imperative form: `Add`, `Fix`, `Update`, `Remove`, `Refactor`, `Migrate`.
+- Atomic commits: one responsibility per commit.
+- Never commit secrets, credentials, or `vendor/`.
 
-## Base de datos
+## Database
 
-- **Todo** script SQL vive en la carpeta `database/` del repositorio.
-- `database/database.sql` es el **esquema base completo** (creación desde cero).
-  Actualmente contiene el esquema de IonAuth (users, groups, users_groups, login_attempts).
-- **Obligatorio**: cualquier cambio de BD debe hacerse en los scripts SQL, no solo
-  "a mano" en el servidor.
+- **All** SQL lives in `database/`.
+- `database/database.sql` is the **complete base schema** (from-scratch setup). Currently holds the
+  IonAuth schema (`users`, `groups`, `users_groups`, `login_attempts`) plus seed data.
+- **Mandatory**: every DB change must be reflected in the SQL scripts, not done "by hand" on a server.
 
-### Cómo reflejar un cambio de BD
+### Reflecting a DB change
 
-1. **Actualizar** `database/database.sql` con el cambio aplicado al esquema base.
-2. **Crear** un script de migración incremental:
-   `database/upgrade_<nombre-relacionado-al-cambio>_<YYYYMMDD>.sql`
-   Ejemplo: `upgrade_add_user_avatar_20260815.sql`
-   - El upgrade contiene **solo** las sentencias de migración (ALTER/CREATE/UPDATE)
-     necesarias para pasar de la versión anterior a la nueva.
-   - Debe ser idempotente en lo posible (usar `IF NOT EXISTS` / comprobaciones).
-3. Ambos archivos se entregan en la misma PR.
+1. **Update** `database/database.sql` with the change applied to the base schema.
+2. **Create** an incremental migration: `database/upgrade_<change-name>_<YYYYMMDD>.sql`
+   (e.g. `upgrade_add_user_avatar_20260815.sql`).
+   - It contains **only** the ALTER/CREATE/UPDATE statements needed to reach the new version.
+   - Make it idempotent where possible (`IF NOT EXISTS` / guards).
+3. Ship both files in the same PR.
 
-## Buenas prácticas de programación
+## Coding practices
 
-- **Seguir MVC de CI3**: controladores delgados, lógica de negocio en modelos o
-  librerías (`application/libraries/`), vistas sin queries.
-- **No editar `system/`**: el core de CI3 viene del fork upstream. Usar
-  `application/core/MY_*` o `application/libraries/MY_*` para extender.
-- **Validación**: toda entrada de usuario se valida con `form_validation`
-  (server-side). Nunca confiar solo en validación de cliente.
-- **Escapado**: usar `html_escape()` o `$this->security->xss_clean()` al imprimir
-  datos en vistas. No imprimir entradas crudas.
-- **SQL**: usar el Query Builder de CI3 con placeholders; nunca concatenar
-  entradas del usuario en SQL.
-- **Errores**: manejar y loguear con `log_message()`; no silenciar excepciones.
-- **Nombres**: clases `Estilo_Estudio` (CI3), métodos `snake_case`, constantes UPPER.
-- **Composer**: nuevas dependencias se agregan con `composer require` y se
-  documenta su uso. No editar `vendor/` a mano.
+- **Follow CI3 MVC**: thin controllers, business logic in models or libraries
+  (`application/libraries/`), no queries in views.
+- **Never edit `system/`**: the CI3 core comes from the upstream fork. Extend via
+  `application/core/MY_*` or `application/libraries/MY_*` (`config.php` sets `subclass_prefix = 'MY_'`).
+- **Validation**: validate all user input server-side with `form_validation`.
+  Never rely on client-side validation alone.
+- **Escaping**: use `html_escape()` or `$this->security->xss_clean()` when printing data in views.
+  Never print raw input.
+- **SQL**: use the CI3 Query Builder with placeholders; never concatenate user input into SQL.
+- **Errors**: handle and log with `log_message()`; never swallow exceptions.
+- **Naming**: classes `Studly_Case` (CI3), methods `snake_case`, constants UPPER_CASE.
+- **Composer**: add new dependencies with `composer require` and document their usage.
+  Never edit `vendor/` by hand.
 
-## Seguridad
+## Security
 
-- Mantener CSRF activado (`csrf_protection = TRUE`) y token presente en todo
-  formulario POST (incluidos los AJAX de auth).
-- Cookies: `httponly` y `samesite=Lax` (no bajar sin revisión).
-- Contraseñas: bcrypt cost >= 12 (config de IonAuth). No inventar hashes propios.
-- No exponer errores en producción (`display_errors = 0`).
-- No loguear datos sensibles (passwords, tokens, API keys).
-- No hardcodear credenciales; usar variables de entorno.
-- `.htaccess` ya bloquea `application/`, `system/`, archivos sensibles: no debilitar.
+- Keep CSRF enabled (`csrf_protection = TRUE`) with the token present in every POST form,
+  including auth AJAX.
+  - Auth views add a second layer: a session-based CSRF nonce
+    (`_get_csrf_nonce()` / `_valid_csrf_nonce()` in `Auth.php`). Keep both in place.
+- Cookies: `httponly` + `samesite=Lax`; do not weaken without review.
+- Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing.
+- Production: `display_errors = 0` (`index.php` already switches error display by `ENVIRONMENT`).
+- Never log sensitive data (passwords, tokens, API keys).
+- Never put real credentials in the repo: `database.php` and `email.php` ship dev placeholders on
+  purpose. This codebase does not read env vars natively — keep credentials out of committed files
+  and change them per environment.
+- Root `.htaccess` already blocks `application/`, `system/`, and sensitive files: do not weaken it.
 
-## Pruebas
+## Testing
 
-- Antes de abrir una PR, verificar con `php -l` los archivos PHP modificados.
-- Probar el flujo afectado (smoke test) y dejar evidencia en la descripción de la PR.
-- Al cambiar configuración de seguridad, validar que los formularios siguen
-  funcionando (CSRF token presente, etc.).
+- Before opening a PR, lint every changed PHP file: `php -l path/to/file.php`.
+- Smoke-test the affected flow (e.g. login / register / forgot password via `php -S localhost:8000`)
+  and leave evidence in the PR description.
+- When changing security configuration, verify forms still work (CSRF token present, AJAX still
+  returns JSON).
+
+## Gotchas
+
+- IonAuth only sends email when `use_ci_email = TRUE` in its config — currently `FALSE`, so
+  `forgotten_password()` and registration return the code/data instead of sending mail. Enable it
+  (and configure `email.php`) before expecting auth emails.
+- `database.sql` seeds a default admin account with a well-known hash — rotate credentials in any
+  real environment.
+- Bilingual UI: language packs live in `application/language/english|spanish`; the default is
+  `english`, so new user-facing strings need both packs.
+- `models/` and `core/` are empty; do not assume every flow follows "controller → model" today.

@@ -19,7 +19,7 @@ Plantilla base de CodeIgniter 3 con IonAuth 3, login, registro publico, recupera
 ## Instalacion
 
 1. Configura la base de datos en `application/config/database.php`.
-2. Ejecuta `ion_auth.sql` en tu base de datos.
+2. Ejecuta `database/database.sql` en tu base de datos.
 3. Revisa la configuracion base en `application/config/config.php`.
 4. Inicia el proyecto desde la raiz, por ejemplo:
 
