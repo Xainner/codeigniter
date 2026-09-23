@@ -48,4 +48,4 @@ Para actualizar una instalación previa, haz una copia de la base y ejecuta `dat
 
 El framework se instala en `vendor/pocketarc/codeigniter/system/`; no edites `vendor/` directamente. Las extensiones del nucleo pertenecen a `application/core/MY_*`. La correccion de escape de las paginas de error se conserva en `application/core/MY_Exceptions.php`.
 
-Ejecuta `composer validate --no-check-publish`, `composer audit`, lint de los PHP modificados y los scripts existentes de `tests/` antes de abrir un PR. `.github/workflows/integration.yml` prueba PHP 8.4 y MariaDB con una base desechable; incluye la medicion de consultas del listado. `composer.lock` fija PocketArc 3.4.5 y la plataforma PHP 8.4.
+Ejecuta `composer validate --no-check-publish`, `composer audit`, lint de los PHP modificados y los scripts existentes de `tests/` antes de abrir un PR. `.github/workflows/integration.yml` prueba PHP 8.4 y MariaDB con una base desechable; incluye la medicion de consultas del listado y la revocacion de una sesion tras desactivar la cuenta. `composer.lock` fija PocketArc 3.4.5 y la plataforma PHP 8.4.

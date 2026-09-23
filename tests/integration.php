@@ -127,6 +127,9 @@ try {
 
     $login = http('GET', '/auth/login');
     check($login['status'] === 200, 'login page opens');
+    check(str_contains($login['headers'], 'X-Frame-Options: DENY')
+        && str_contains($login['headers'], 'X-Content-Type-Options: nosniff'),
+        'application responses include security headers');
     $loginResult = http('POST', '/auth/login', csrf($login['body']) + [
         'identity' => 'ada@example.test', 'password' => 'VeryStrongPassword123!',
     ], true);
@@ -229,10 +232,26 @@ try {
     $membership = $conn->query('SELECT COUNT(*) AS total FROM users_groups WHERE user_id=' . $id)->fetch_assoc();
     check(redirected($edited) && $editedUser['last_name'] === 'Hopper Jr' && (int) $membership['total'] === 2,
         'admin edits user and group membership');
+    $adminCookieFile = $cookieFile;
+    $memberCookieFile = tempnam(sys_get_temp_dir(), 'ci-member-cookie-');
+    register_shutdown_function(static function () use ($memberCookieFile): void { @unlink($memberCookieFile); });
+    $cookieFile = $memberCookieFile;
+    $memberLogin = http('GET', '/auth/login');
+    $memberSession = http('POST', '/auth/login', csrf($memberLogin['body']) + [
+        'identity' => 'grace@example.test', 'password' => 'AnotherStrongPassword123!',
+    ], true);
+    check($memberSession['status'] === 200 && http('GET', '/auth/edit_user/' . $id)['status'] === 200,
+        'member session accesses its own profile before deactivation');
+    $cookieFile = $adminCookieFile;
     $page = http('GET', '/auth?q=grace');
     $nonce = hidden($page['body'], 'auth_nonce');
     check(redirected(http('POST', '/auth/deactivate/' . $id, csrf($page['body']) + ['auth_nonce' => $nonce])),
         'admin deactivates another user');
+    sleep(2);
+    $cookieFile = $memberCookieFile;
+    check(http('GET', '/auth/edit_user/' . $id)['status'] === 403,
+        'deactivation revokes an existing session');
+    $cookieFile = $adminCookieFile;
     $page = http('GET', '/auth?q=grace');
     check(redirected(http('POST', '/auth/activate/' . $id, csrf($page['body']) + ['auth_nonce' => hidden($page['body'], 'auth_nonce')])),
         'admin reactivates user');

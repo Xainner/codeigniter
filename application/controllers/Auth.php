@@ -13,7 +13,7 @@ class Auth extends MY_Controller
 	{
 		parent::__construct();
 		$this->load->library(['ion_auth', 'form_validation']);
-		$this->load->helper(['url', 'language']);
+		$this->load->helper(['url', 'language', 'form']);
 
 		$this->form_validation->set_error_delimiters($this->config->item('error_start_delimiter', 'ion_auth'), $this->config->item('error_end_delimiter', 'ion_auth'));
 
@@ -37,6 +37,7 @@ class Auth extends MY_Controller
 		}
 		else
 		{
+			$listing_queries_start = count($this->db->queries);
 			$this->load->model('Admin_user_model');
 			$this->load->library('pagination');
 			$query = trim((string) $this->input->get('q', TRUE));
@@ -68,7 +69,7 @@ class Auth extends MY_Controller
 			];
 			$this->session->set_flashdata('admin_nonce', $this->data['nonce_hash']);
 			if (ENVIRONMENT === 'testing') {
-				$this->output->set_header('X-Query-Count: ' . count($this->db->queries));
+				$this->output->set_header('X-Query-Count: ' . (count($this->db->queries) - $listing_queries_start));
 			}
 			$this->_render_page('dashboard/index', $this->data);
 		}

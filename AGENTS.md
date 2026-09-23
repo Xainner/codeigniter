@@ -111,6 +111,8 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
 - Auth views add a second layer: a session-based CSRF nonce
     (`_get_csrf_nonce()` / `_valid_csrf_nonce()` in `Auth.php`). Keep both in place.
 - Cookies: `httponly` + `samesite=Lax`; do not weaken without review.
+- `MY_Controller` sets IonAuth's `recheck_timer` to one second so deactivated users lose
+  existing sessions promptly. Keep a two-session integration test when changing this behavior.
 - Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing.
 - Production: `display_errors = 0` (`public/index.php` switches error display by `ENVIRONMENT`).
 - Never log sensitive data (passwords, tokens, API keys).
