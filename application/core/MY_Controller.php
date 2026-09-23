@@ -19,6 +19,8 @@ class MY_Controller extends CI_Controller
         $ion['min_password_length'] = $this->app_settings['min_password_length'];
         $ion['maximum_login_attempts'] = $this->app_settings['maximum_login_attempts'];
         $ion['lockout_time'] = $this->app_settings['lockout_time'];
+        // Revalidate active sessions so deactivation takes effect promptly.
+        $ion['recheck_timer'] = 1;
         $ion['site_title'] = $this->app_settings['site_name'];
         $ion['admin_email'] = $this->app_settings['smtp_from_email'];
         $ion['use_ci_email'] = TRUE;

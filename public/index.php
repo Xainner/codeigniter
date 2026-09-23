@@ -76,6 +76,9 @@
 		echo 'APP_URL must be configured.';
 		exit(3);
 	}
+	header('X-Content-Type-Options: nosniff');
+	header('X-Frame-Options: DENY');
+	header('Referrer-Policy: strict-origin-when-cross-origin');
 	$composer_autoload = dirname(__DIR__).'/vendor/autoload.php';
 	if ( ! is_file($composer_autoload))
 	{

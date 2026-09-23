@@ -9,7 +9,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | consumed by MY_Email to configure the PHPMailer transport.
 |
 | Available protocols: 'mail', 'sendmail', 'smtp'
-| If you use 'smtp', fill in the smtp_* settings below.
+| SMTP values are supplied at runtime from the audited /auth/settings panel.
+| Leave these defaults empty so no deployment credentials enter the repository.
 |
 | You can also override these per-call with $this->email->initialize(array(...))
 | (IonAuth does this via $config['email_config'] in ion_auth.php when
@@ -18,7 +19,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 */
 $config['protocol']    = 'smtp';       // mail | sendmail | smtp
 $config['mailpath']    = '/usr/sbin/sendmail';
-$config['smtp_host']   = 'smtp.example.com';
+$config['smtp_host']   = '';
 $config['smtp_port']   = 587;
 $config['smtp_user']   = '';
 $config['smtp_pass']   = '';
