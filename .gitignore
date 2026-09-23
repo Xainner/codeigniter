@@ -8,7 +8,6 @@ application/logs/*
 
 !application/*/.htaccess
 
-composer.lock
 /vendor/
 
 # IDE Files
