@@ -4,21 +4,21 @@ Project rules for AI agents and developers.
 
 ## Stack
 
-- **Framework**: CodeIgniter (`pocketarc/codeigniter` fork) with a versioned `system/` snapshot.
+- **Framework**: CodeIgniter (`pocketarc/codeigniter` 3.4.5) installed by Composer in `vendor/pocketarc/codeigniter/system/`.
 - **Auth**: IonAuth in `application/third_party/ion_auth` (registered as a package in `autoload.php`).
-- **PHP**: >= 7.2, works up to 8.x (dev currently on 8.2).
+- **PHP**: >= 8.4 with `openssl`, `gd`, `mysqli` and `xml`.
 - **Email**: PHPMailer 7.1 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API, falls back to native transport if vendor is missing).
 - **API**: `chriskacerguis/codeigniter-restserver` — config in `application/config/rest.php`, example controller `application/controllers/Api.php`.
-- **Composer**: autoloads root `vendor/autoload.php`. Commit `composer.lock` and keep Composer's platform PHP at 7.2 so dependency updates respect the minimum supported version.
+- **Composer**: autoloads root `vendor/autoload.php`. Commit `composer.lock` and keep Composer's platform PHP at 8.4.
 
 ## Quick start
 
 ```bash
 composer install
-php -S localhost:8000
+php -S localhost:8000 -t public public/router.php
 ```
 
-1. Set real values in `application/config/database.php` (committed placeholders: `root`/empty/`testdb`).
+1. Set `APP_KEY` (64 hexadecimal characters), `APP_URL`, `CI_ENV`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASS` in the PHP process environment. `APP_KEY` is required even in development.
 2. Import `database/database.sql` (IonAuth schema + seed admin `admin@admin.com`).
 3. Configure `application/config/email.php` (SMTP) for real email delivery.
 
@@ -31,12 +31,14 @@ application/
   controllers/   Auth (IonAuth flows: login/register/forgot/reset, HTML + AJAX JSON), Api (REST), Welcome
   models/        (empty today — business logic lives in controllers/libraries)
   libraries/     MY_Email (PHPMailer transport for CI_Email)
-  core/          (empty — extend CI3 there with MY_ subclasses)
+  core/          MY_Exceptions keeps HTML error escaping outside vendor/
   config/        database.php, email.php, rest.php, routes.php, config.php (subclass_prefix)
   views/         auth/ (all auth pages on auth_template.php), errors/, welcome_message.php
   language/      english/ and spanish/ packs for auth, ion_auth, rest (default language: english)
   third_party/   ion_auth (library + model + its own config/ion_auth.php)
 database/        database.sql (full base schema) + upgrade_*.sql migrations
+public/          web document root, index.php, router.php, assets/, .htaccess
+vendor/          Composer packages, including PocketArc system/ (ignored by Git)
 ```
 
 Conventions: controllers fill `$this->data` (title, message, per-field input arrays) and render through
@@ -91,8 +93,7 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
   (`application/libraries/`), no queries in views.
 - **Keep core changes traceable**: extend routine application behavior via
   `application/core/MY_*` or `application/libraries/MY_*` (`config.php` sets `subclass_prefix = 'MY_'`).
-  Changes to `system/` are allowed for reviewed upstream syncs and security or PHP compatibility fixes;
-  record the source commit or advisory and test the affected behavior.
+  Do not edit `vendor/pocketarc/codeigniter/system/`; update the dependency or extend it from `application/`.
 - **Validation**: validate all user input server-side with `form_validation`.
   Never rely on client-side validation alone.
 - **Escaping**: use `html_escape()` or `$this->security->xss_clean()` when printing data in views.
@@ -111,17 +112,17 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
     (`_get_csrf_nonce()` / `_valid_csrf_nonce()` in `Auth.php`). Keep both in place.
 - Cookies: `httponly` + `samesite=Lax`; do not weaken without review.
 - Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing.
-- Production: `display_errors = 0` (`index.php` already switches error display by `ENVIRONMENT`).
+- Production: `display_errors = 0` (`public/index.php` switches error display by `ENVIRONMENT`).
 - Never log sensitive data (passwords, tokens, API keys).
-- Never put real credentials in the repo: `database.php` and `email.php` ship dev placeholders on
-  purpose. This codebase does not read env vars natively — keep credentials out of committed files
-  and change them per environment.
-- Root `.htaccess` already blocks `application/`, `system/`, and sensitive files: do not weaken it.
+- Never put real credentials in the repo. The database reads environment variables, and `APP_KEY`
+  must be a stable, external 64-character hexadecimal key. Do not disclose or rotate it casually.
+- Configure the web server's document root as `public/`; `application/`, `vendor/` and storage
+  must stay outside it. Keep `public/.htaccess` and the development router restrictive.
 
 ## Testing
 
 - Before opening a PR, lint every changed PHP file: `php -l path/to/file.php`.
-- Smoke-test the affected flow (e.g. login / register / forgot password via `php -S localhost:8000`)
+- Smoke-test the affected flow (e.g. login / register / forgot password via `php -S localhost:8000 -t public public/router.php`)
   and leave evidence in the PR description.
 - When changing security configuration, verify forms still work (CSRF token present, AJAX still
   returns JSON).
@@ -135,4 +136,4 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
   real environment.
 - Bilingual UI: language packs live in `application/language/english|spanish`; the default is
   `english`, so new user-facing strings need both packs.
-- `models/` and `core/` are empty; do not assume every flow follows "controller → model" today.
+- `models/` is empty; do not assume every flow follows "controller → model" today.

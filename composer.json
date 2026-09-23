@@ -8,13 +8,18 @@
 		"source": "https://github.com/Xainner/codeigniter"
 	},
 	"require": {
-		"php": ">=7.2",
+		"php": "^8.4",
+		"ext-openssl": "*",
+		"ext-gd": "*",
+		"ext-mysqli": "*",
+		"ext-xml": "*",
+		"pocketarc/codeigniter": "^3.4.5",
 		"phpmailer/phpmailer": "^7.1.1",
 		"chriskacerguis/codeigniter-restserver": "^3.1"
 	},
 	"config": {
 		"platform": {
-			"php": "7.2.0"
+			"php": "8.4.0"
 		}
 	}
 }
