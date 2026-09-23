@@ -1,6 +1,6 @@
 <?php
 // Run with PHP 8.0 or newer: php tests/core_345_smoke.php
-define('BASEPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'system'.DIRECTORY_SEPARATOR);
+define('BASEPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'pocketarc'.DIRECTORY_SEPARATOR.'codeigniter'.DIRECTORY_SEPARATOR.'system'.DIRECTORY_SEPARATOR);
 
 require BASEPATH.'libraries/Session/CI_Session_driver_interface.php';
 require BASEPATH.'libraries/Session/PHP8SessionWrapper.php';

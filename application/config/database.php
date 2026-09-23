@@ -70,10 +70,11 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $active_group = 'default';
 $db['default'] = array(
 	'dsn'	=> '',
-	'hostname' => 'localhost',
-	'username' => 'root',
-	'password' => '',
-	'database' => 'testdb',
+	'hostname' => getenv('DB_HOST') ?: '127.0.0.1',
+	'port' => (int) (getenv('DB_PORT') ?: 3306),
+	'username' => (string) getenv('DB_USER'),
+	'password' => (string) getenv('DB_PASS'),
+	'database' => (string) getenv('DB_NAME'),
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
@@ -89,5 +90,4 @@ $db['default'] = array(
 	'failover' => array(),
 	'save_queries' => (ENVIRONMENT !== 'production')
 );
-
 

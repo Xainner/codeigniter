@@ -1,6 +1,6 @@
 <?php
 // Run with the XML extension: php -d error_reporting=E_ALL tests/xmlrpc_345_smoke.php
-define('BASEPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'system'.DIRECTORY_SEPARATOR);
+define('BASEPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'pocketarc'.DIRECTORY_SEPARATOR.'codeigniter'.DIRECTORY_SEPARATOR.'system'.DIRECTORY_SEPARATOR);
 
 function log_message($level, $message)
 {

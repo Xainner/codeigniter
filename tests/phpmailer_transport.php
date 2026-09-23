@@ -1,6 +1,6 @@
 <?php
 // Run after composer install: php tests/phpmailer_transport.php
-define('BASEPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'system'.DIRECTORY_SEPARATOR);
+define('BASEPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'pocketarc'.DIRECTORY_SEPARATOR.'codeigniter'.DIRECTORY_SEPARATOR.'system'.DIRECTORY_SEPARATOR);
 define('ICONV_ENABLED', extension_loaded('iconv'));
 define('MB_ENABLED', extension_loaded('mbstring'));
 

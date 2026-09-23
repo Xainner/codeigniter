@@ -13,12 +13,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.2', '8.2', '8.5']
+        php: ['8.4', '8.5', '8.6']
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: openssl, gd
           coverage: none
-      - run: php -l system/core/Exceptions.php && php -l application/views/errors/html/error_exception.php && php -l application/views/errors/html/error_php.php
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: php -l application/core/MY_Exceptions.php && php -l application/views/errors/html/error_exception.php && php -l application/views/errors/html/error_php.php
       - run: php -d error_reporting=E_ALL tests/exceptions_security.php

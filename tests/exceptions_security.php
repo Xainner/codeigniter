@@ -1,6 +1,6 @@
 <?php
 // Run with: php tests/exceptions_security.php
-define('BASEPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'system'.DIRECTORY_SEPARATOR);
+define('BASEPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'pocketarc'.DIRECTORY_SEPARATOR.'codeigniter'.DIRECTORY_SEPARATOR.'system'.DIRECTORY_SEPARATOR);
 define('VIEWPATH', dirname(__DIR__).DIRECTORY_SEPARATOR.'application'.DIRECTORY_SEPARATOR.'views'.DIRECTORY_SEPARATOR);
 
 function is_cli()
@@ -19,6 +19,7 @@ function set_status_header($code = 200, $text = '')
 
 require BASEPATH.'core/Common.php';
 require BASEPATH.'core/Exceptions.php';
+require dirname(__DIR__).'/application/core/MY_Exceptions.php';
 
 function assert_safe($html, $label)
 {
@@ -29,7 +30,7 @@ function assert_safe($html, $label)
 	}
 }
 
-$errors = new CI_Exceptions();
+$errors = new MY_Exceptions();
 $payload = '<script>alert(1)</script>';
 
 $html = $errors->show_error($payload, $payload);
