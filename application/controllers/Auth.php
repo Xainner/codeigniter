@@ -5,14 +5,13 @@
  * @property Ion_auth|Ion_auth_model $ion_auth        The ION Auth spark
  * @property CI_Form_validation      $form_validation The form validation library
  */
-class Auth extends CI_Controller
+class Auth extends MY_Controller
 {
 	public $data = [];
 
 	public function __construct()
 	{
 		parent::__construct();
-		$this->load->database();
 		$this->load->library(['ion_auth', 'form_validation']);
 		$this->load->helper(['url', 'language']);
 
@@ -26,7 +25,6 @@ class Auth extends CI_Controller
 	 */
 	public function index()
 	{
-
 		if (!$this->ion_auth->logged_in())
 		{
 			// redirect them to the login page
@@ -39,23 +37,34 @@ class Auth extends CI_Controller
 		}
 		else
 		{
-			$this->data['title'] = $this->lang->line('index_heading');
-			
-			// set the flash data error message if there is one
-			$this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-
-			//list the users
-			$this->data['users'] = $this->ion_auth->users()->result();
-			
-			//USAGE NOTE - you can do more complicated queries like this
-			//$this->data['users'] = $this->ion_auth->where('field', 'value')->users()->result();
-			
-			foreach ($this->data['users'] as $k => $user)
-			{
-				$this->data['users'][$k]->groups = $this->ion_auth->get_users_groups($user->id)->result();
-			}
-
-			$this->_render_page('auth' . DIRECTORY_SEPARATOR . 'index', $this->data);
+			$this->load->model('Admin_user_model');
+			$this->load->library('pagination');
+			$query = trim((string) $this->input->get('q', TRUE));
+			$query = mb_substr($query, 0, 100);
+			$total = $this->Admin_user_model->count($query);
+			$page = max(1, (int) $this->input->get('page'));
+			$page = min($page, max(1, (int) ceil($total / 20)));
+			$this->pagination->initialize([
+				'base_url' => site_url('auth'),
+				'total_rows' => $total,
+				'per_page' => 20,
+				'use_page_numbers' => TRUE,
+				'page_query_string' => TRUE,
+				'query_string_segment' => 'page',
+				'reuse_query_string' => TRUE,
+			]);
+			$this->data = [
+				'title' => 'Usuarios',
+				'users' => $this->Admin_user_model->page($query, 20, ($page - 1) * 20),
+				'groups' => $this->ion_auth->groups()->result(),
+				'pagination' => $this->pagination->create_links(),
+				'query' => $query,
+				'message' => strip_tags((string) $this->session->flashdata('message')),
+				'settings' => $this->app_settings,
+				'csrf_name' => $this->security->get_csrf_token_name(),
+				'csrf_hash' => $this->security->get_csrf_hash(),
+			];
+			$this->_render_page('dashboard/index', $this->data);
 		}
 	}
 
@@ -220,100 +229,63 @@ class Auth extends CI_Controller
 	public function forgot_password()
 	{
 		$this->data['title'] = $this->lang->line('forgot_password_heading');
+		$this->data['type'] = 'email';
+		$this->data['identity_label'] = $this->lang->line('forgot_password_email_identity_label');
+		$this->data['identity'] = ['name' => 'identity', 'id' => 'identity'];
+		$this->data['message'] = $this->session->flashdata('message');
 
-		// Check if request is AJAX
-		$is_ajax = $this->input->is_ajax_request();
-		
-		// setting validation rules by checking whether identity is username or email
-		if ($this->config->item('identity', 'ion_auth') != 'email')
-		{
-			$this->form_validation->set_rules('identity', $this->lang->line('forgot_password_identity_label'), 'required');
+		if ($this->input->method(TRUE) === 'GET') {
+			$this->_render_page('auth/forgot_password', $this->data);
+			return;
 		}
-		else
-		{
-			$this->form_validation->set_rules('identity', $this->lang->line('forgot_password_validation_email_label'), 'required|valid_email');
+		if ($this->input->method(TRUE) !== 'POST') {
+			show_404();
+			return;
 		}
 
-
-		if ($this->form_validation->run() === FALSE)
-		{
-			$this->data['type'] = $this->config->item('identity', 'ion_auth');
-			// setup the input
-			$this->data['identity'] = [
-				'name' => 'identity',
-				'id' => 'identity',
-			];
-
-			if ($this->config->item('identity', 'ion_auth') != 'email')
-			{
-				$this->data['identity_label'] = $this->lang->line('forgot_password_identity_label');
-			}
-			else
-			{
-				$this->data['identity_label'] = $this->lang->line('forgot_password_email_identity_label');
-			}
-
-			// set any errors and display the form
-			$this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-			
-			if ($is_ajax) {
-				echo json_encode(['success' => false, 'message' => $this->data['message']]);
-				return;
-			} else {
-				$this->_render_page('auth' . DIRECTORY_SEPARATOR . 'forgot_password', $this->data);
-			}
+		$this->form_validation->set_rules('identity', 'Correo', 'required|valid_email|max_length[254]');
+		if (!$this->form_validation->run()) {
+			$this->recovery_response(FALSE, 'Escribe un correo válido.', 422);
+			return;
 		}
-		else
-		{
-			$identity_column = $this->config->item('identity', 'ion_auth');
-			$identity = $this->ion_auth->where($identity_column, $this->input->post('identity'))->users()->row();
-
-			if (empty($identity))
-			{
-
-				if ($this->config->item('identity', 'ion_auth') != 'email')
-				{
-					$this->ion_auth->set_error('forgot_password_identity_not_found');
-				}
-				else
-				{
-					$this->ion_auth->set_error('forgot_password_email_not_found');
-				}
-
-				if ($is_ajax) {
-					echo json_encode(['success' => false, 'message' => $this->ion_auth->errors()]);
-					return;
-				} else {
-					$this->session->set_flashdata('message', $this->ion_auth->errors());
-					redirect("auth/forgot_password", 'refresh');
-				}
-			}
-
-			// run the forgotten password method to email an activation code to the user
-			$forgotten = $this->ion_auth->forgotten_password($identity->{$this->config->item('identity', 'ion_auth')});
-
-			if ($forgotten)
-			{
-				// if there were no errors
-				if ($is_ajax) {
-					echo json_encode(['success' => true, 'message' => $this->ion_auth->messages(), 'redirect' => base_url('auth/login')]);
-					return;
-				} else {
-					$this->session->set_flashdata('message', $this->ion_auth->messages());
-					redirect("auth/login", 'refresh'); //we should display a confirmation page here instead of the login page
-				}
-			}
-			else
-			{
-				if ($is_ajax) {
-					echo json_encode(['success' => false, 'message' => $this->ion_auth->errors()]);
-					return;
-				} else {
-					$this->session->set_flashdata('message', $this->ion_auth->errors());
-					redirect("auth/forgot_password", 'refresh');
-				}
-			}
+		if (!$this->app_settings['smtp_configured']) {
+			$this->recovery_response(FALSE, 'La recuperación no está disponible temporalmente.', 503);
+			return;
 		}
+
+		$this->load->model('Rate_limiter_model');
+		$identity = strtolower(trim((string) $this->input->post('identity')));
+		$ip = $this->input->ip_address();
+		if (!$this->Rate_limiter_model->allow('recovery-ip', $ip, 20, 3600)
+			|| !$this->Rate_limiter_model->allow('recovery-target', $identity, 5, 3600)) {
+			$this->recovery_response(FALSE, 'Espera antes de volver a solicitar instrucciones.', 429);
+			return;
+		}
+
+		$user = $this->ion_auth->where('email', $identity)->users()->row();
+		if ($user && !$this->ion_auth->forgotten_password($identity)) {
+			log_message('error', 'Password recovery transport failed');
+			$this->recovery_response(FALSE, 'La recuperación no está disponible temporalmente.', 503);
+			return;
+		}
+		// Never disclose whether the address exists.
+		$this->recovery_response(TRUE, 'Si existe una cuenta, recibirá instrucciones por correo.', 200);
+	}
+
+	private function recovery_response($success, $message, $status)
+	{
+		if ($this->input->is_ajax_request()) {
+			$this->output->set_status_header($status)
+				->set_content_type('application/json', 'utf-8')
+				->set_output(json_encode([
+					'success' => $success,
+					'message' => $message,
+					'redirect' => $success ? site_url('auth/login') : NULL,
+				], JSON_UNESCAPED_UNICODE));
+			return;
+		}
+		$this->session->set_flashdata('message', $message);
+		redirect($success ? 'auth/login' : 'auth/forgot_password');
 	}
 
 	/**
@@ -426,7 +398,7 @@ class Auth extends CI_Controller
 		{
 			$activation = $this->ion_auth->activate($id, $code);
 		}
-		else if ($this->ion_auth->is_admin())
+		else if ($this->input->method(TRUE) === 'POST' && $this->ion_auth->is_admin())
 		{
 			$activation = $this->ion_auth->activate($id);
 		}
@@ -613,6 +585,10 @@ class Auth extends CI_Controller
 	 */
 	public function register()
 	{
+		if (!$this->app_settings['public_registration']) {
+			show_404();
+			return;
+		}
 		$this->data['title'] = $this->lang->line('create_user_heading');
 
 		// Check if request is AJAX
