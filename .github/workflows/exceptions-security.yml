@@ -1,0 +1,24 @@
+name: Exception HTML escaping
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  exceptions:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.2', '8.2', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - run: php -l system/core/Exceptions.php && php -l application/views/errors/html/error_exception.php && php -l application/views/errors/html/error_php.php
+      - run: php -d error_reporting=E_ALL tests/exceptions_security.php

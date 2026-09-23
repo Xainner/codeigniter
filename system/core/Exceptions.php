@@ -182,6 +182,8 @@ class CI_Exceptions {
 		else
 		{
 			set_status_header($status_code);
+			$heading = html_escape($heading);
+			$message = html_escape($message);
 			$message = '<p>'.(is_array($message) ? implode('</p><p>', $message) : $message).'</p>';
 			$template = 'html'.DIRECTORY_SEPARATOR.$template;
 		}
@@ -223,6 +225,7 @@ class CI_Exceptions {
 		}
 		else
 		{
+			$message = html_escape($message);
 			$templates_path .= 'html'.DIRECTORY_SEPARATOR;
 		}
 
@@ -273,6 +276,9 @@ class CI_Exceptions {
 				$filepath = $x[count($x)-2].'/'.end($x);
 			}
 
+			$severity = html_escape($severity);
+			$message = html_escape($message);
+			$filepath = html_escape($filepath);
 			$template = 'html'.DIRECTORY_SEPARATOR.'error_php';
 		}
 		else

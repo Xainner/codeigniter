@@ -4,7 +4,7 @@ Project rules for AI agents and developers.
 
 ## Stack
 
-- **Framework**: CodeIgniter 3.4.2 (`pocketarc/codeigniter` fork) — never edit `system/`.
+- **Framework**: CodeIgniter (`pocketarc/codeigniter` fork) with a versioned `system/` snapshot.
 - **Auth**: IonAuth in `application/third_party/ion_auth` (registered as a package in `autoload.php`).
 - **PHP**: >= 7.2, works up to 8.x (dev currently on 8.2).
 - **Email**: PHPMailer 6.9 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API, falls back to native transport if vendor is missing).
@@ -89,8 +89,10 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
 
 - **Follow CI3 MVC**: thin controllers, business logic in models or libraries
   (`application/libraries/`), no queries in views.
-- **Never edit `system/`**: the CI3 core comes from the upstream fork. Extend via
+- **Keep core changes traceable**: extend routine application behavior via
   `application/core/MY_*` or `application/libraries/MY_*` (`config.php` sets `subclass_prefix = 'MY_'`).
+  Changes to `system/` are allowed for reviewed upstream syncs and security or PHP compatibility fixes;
+  record the source commit or advisory and test the affected behavior.
 - **Validation**: validate all user input server-side with `form_validation`.
   Never rely on client-side validation alone.
 - **Escaping**: use `html_escape()` or `$this->security->xss_clean()` when printing data in views.
