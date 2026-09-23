@@ -15,20 +15,33 @@ class Admin_settings extends MY_Controller
         $errors = [];
         if ($this->input->method(TRUE) === 'POST') {
             $values = $this->validated_input($errors);
+            $new_logo = '';
+            $previous_logo = (string) $this->app_settings['brand_logo'];
             if (!$errors && !empty($_FILES['brand_logo_file']['name'])) {
                 try {
-                    $values['brand_logo'] = $this->save_logo($_FILES['brand_logo_file']);
+                    $new_logo = $this->save_logo($_FILES['brand_logo_file']);
+                    $values['brand_logo'] = $new_logo;
                 } catch (RuntimeException $exception) {
                     $errors[] = $exception->getMessage();
                 }
             }
             if (!$errors) {
                 $actor = $this->ion_auth->user()->row();
-                if ($this->App_settings_model->save($values, $actor->id)) {
+                try {
+                    $saved = $this->App_settings_model->save($values, $actor->id);
+                } catch (Throwable $exception) {
+                    log_message('error', 'Could not save application settings');
+                    $saved = FALSE;
+                }
+                if ($saved) {
+                    if ($new_logo !== '' && $previous_logo !== $new_logo) {
+                        $this->delete_logo($previous_logo);
+                    }
                     $this->session->set_flashdata('message', 'Ajustes guardados.');
                     redirect('auth/settings');
                     return;
                 }
+                $this->delete_logo($new_logo);
                 $errors[] = 'No se pudieron guardar los ajustes.';
             }
         }
@@ -64,8 +77,17 @@ class Admin_settings extends MY_Controller
         $this->email->subject('Prueba de correo de ' . $settings['site_name']);
         $this->email->message('La configuración SMTP está funcionando.');
         if ($this->email->send()) {
-            $this->App_settings_model->save(['smtp_verified' => '1'], $this->ion_auth->user()->row()->id);
-            $this->session->set_flashdata('message', 'Correo de prueba aceptado por el servidor SMTP.');
+            try {
+                $saved = $this->App_settings_model->save(['smtp_verified' => '1'], $this->ion_auth->user()->row()->id);
+            } catch (Throwable $exception) {
+                $saved = FALSE;
+            }
+            if ($saved) {
+                $this->session->set_flashdata('message', 'Correo de prueba aceptado por el servidor SMTP.');
+            } else {
+                log_message('error', 'SMTP test succeeded but verification status could not be saved');
+                $this->session->set_flashdata('message', 'El correo se envió, pero no se pudo guardar la verificación SMTP.');
+            }
         } else {
             log_message('error', 'SMTP test failed');
             $this->session->set_flashdata('message', 'No se pudo enviar el correo de prueba.');
@@ -172,9 +194,21 @@ class Admin_settings extends MY_Controller
         $ok = $encode($image, $path);
         imagedestroy($image);
         if (!$ok) {
+            @unlink($path);
             throw new RuntimeException('No se pudo guardar el logo.');
         }
         @chmod($path, 0600);
         return $filename;
+    }
+
+    private function delete_logo($filename)
+    {
+        if (!is_string($filename) || !preg_match('/^[a-f0-9]{32}\.(jpg|png|webp)$/D', $filename)) {
+            return;
+        }
+        $path = APPPATH . '../storage/brand/' . $filename;
+        if (is_file($path) && !@unlink($path)) {
+            log_message('error', 'Could not remove an obsolete brand logo');
+        }
     }
 }

@@ -75,6 +75,7 @@ $this->load->view('dashboard/_header', [
                     <a class="text-link" href="<?php echo html_escape(site_url('auth/edit_user/' . $id)); ?>">Editar<span class="sr-only"> a <?php echo html_escape($name !== '' ? $name : $email); ?></span></a>
                     <form action="<?php echo html_escape(site_url('auth/' . ($active ? 'deactivate' : 'activate') . '/' . $id)); ?>" method="post" data-confirm="<?php echo html_escape(($active ? '¿Desactivar' : '¿Activar') . ' esta cuenta?'); ?>">
                         <input type="hidden" name="<?php echo html_escape((string) ($csrf_name ?? '')); ?>" value="<?php echo html_escape((string) ($csrf_hash ?? '')); ?>">
+                        <input type="hidden" name="<?php echo html_escape((string) ($nonce_name ?? '')); ?>" value="<?php echo html_escape((string) ($nonce_hash ?? '')); ?>">
                         <button class="text-link <?php echo $active ? 'text-danger' : ''; ?>" type="submit"><?php echo $active ? 'Desactivar' : 'Activar'; ?><span class="sr-only"> a <?php echo html_escape($name !== '' ? $name : $email); ?></span></button>
                     </form>
                 </td>

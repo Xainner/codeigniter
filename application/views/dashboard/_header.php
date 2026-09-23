@@ -41,7 +41,10 @@ $active_nav = (string) ($active_nav ?? 'users');
         </nav>
         <div class="sidebar-foot">
             <span class="sidebar-foot-label">Administración</span>
-            <a href="<?php echo html_escape(site_url('auth/logout')); ?>">Cerrar sesión <span aria-hidden="true">↗</span></a>
+            <form method="post" action="<?php echo html_escape(site_url('auth/logout')); ?>">
+                <input type="hidden" name="<?php echo html_escape($this->security->get_csrf_token_name()); ?>" value="<?php echo html_escape($this->security->get_csrf_hash()); ?>">
+                <button type="submit" class="sidebar-logout">Cerrar sesión <span aria-hidden="true">↗</span></button>
+            </form>
         </div>
     </aside>
     <div class="workspace">

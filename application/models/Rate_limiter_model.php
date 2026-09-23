@@ -4,7 +4,10 @@ class Rate_limiter_model extends CI_Model
 {
     public function allow($scope, $subject, $max, $seconds)
     {
-        $key = hash('sha256', $scope . ':' . $subject);
+        if (random_int(1, 100) === 1) {
+            $this->db->where('expires_at <', time())->delete('request_limits');
+        }
+        $key = hash_hmac('sha256', $scope . ':' . $subject, hex2bin((string) getenv('APP_KEY')));
         $expires = time() + $seconds;
         $this->db->query(
             'INSERT INTO request_limits (key_hash, hits, expires_at) VALUES (?, 1, ?) '

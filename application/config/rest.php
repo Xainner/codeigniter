@@ -45,13 +45,6 @@ $config['rest_default_format'] = 'json';
 */
 $config['rest_supported_formats'] = [
     'json',
-    'array',
-    'csv',
-    'html',
-    'jsonp',
-    'php',
-    'serialized',
-    'xml',
 ];
 
 /*
@@ -82,7 +75,7 @@ $config['rest_message_field_name'] = 'error';
 | Should we enable emulation of the request (e.g. used in Mootools request)
 |
 */
-$config['enable_emulate_request'] = true;
+$config['enable_emulate_request'] = false;
 
 /*
 |--------------------------------------------------------------------------

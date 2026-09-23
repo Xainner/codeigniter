@@ -9,7 +9,7 @@ CREATE TABLE `groups` (
   `name` varchar(20) NOT NULL,
   `description` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 #
 # Dumping data for table 'groups'
@@ -52,7 +52,7 @@ CREATE TABLE `users` (
   CONSTRAINT `uc_activation_selector` UNIQUE (`activation_selector`),
   CONSTRAINT `uc_forgotten_password_selector` UNIQUE (`forgotten_password_selector`),
   CONSTRAINT `uc_remember_selector` UNIQUE (`remember_selector`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 #
@@ -72,7 +72,7 @@ CREATE TABLE `users_groups` (
   CONSTRAINT `uc_users_groups` UNIQUE (`user_id`, `group_id`),
   CONSTRAINT `fk_users_groups_users1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
   CONSTRAINT `fk_users_groups_groups1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS `login_attempts`;
 

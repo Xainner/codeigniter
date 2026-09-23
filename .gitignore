@@ -9,6 +9,7 @@ application/logs/*
 !application/*/.htaccess
 
 /vendor/
+/storage/
 
 # IDE Files
 #-------------------------

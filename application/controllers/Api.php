@@ -28,11 +28,7 @@ class Api extends RestController
 	public function ping_get()
 	{
 		$this->response([
-			'status'  => TRUE,
-			'message' => 'API online',
-			'ci'      => CI_VERSION,
-			'php'     => PHP_VERSION,
-			'time'    => date('c'),
+			'status' => 'ok',
 		], RestController::HTTP_OK);
 	}
 }

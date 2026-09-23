@@ -12,6 +12,7 @@
 		"ext-openssl": "*",
 		"ext-gd": "*",
 		"ext-mysqli": "*",
+		"ext-mbstring": "*",
 		"ext-xml": "*",
 		"pocketarc/codeigniter": "^3.4.5",
 		"phpmailer/phpmailer": "^7.1.1",

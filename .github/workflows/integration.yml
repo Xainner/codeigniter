@@ -1,0 +1,73 @@
+name: Application integration
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: ci_test_app
+          MARIADB_USER: ci
+          MARIADB_PASSWORD: ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      APP_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      APP_SETUP_TOKEN: ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+      APP_URL: http://127.0.0.1:8011
+      CI_ENV: testing
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_NAME: ci_test_app
+      DB_USER: ci
+      DB_PASS: ci
+      TEST_BASE_URL: http://127.0.0.1:8011
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, gd, mbstring, mysqli, openssl, xml
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - name: Validate dependencies and PHP syntax
+        run: |
+          composer validate --no-check-publish
+          composer audit --locked
+          git ls-files '*.php' | xargs -n1 php -l >/tmp/php-lint.log
+          php -l tests/integration.php
+          php -l tests/smtp_sink.php
+      - name: Existing smoke suites
+        run: |
+          php tests/core_345_smoke.php
+          php tests/exceptions_security.php
+          php tests/phpmailer_transport.php
+          php tests/xmlrpc_345_smoke.php
+      - run: php tests/import_schema.php
+      - name: Exercise installation, admin dashboard and API
+        run: |
+          export TEST_SMTP_CAPTURE_DIR="$(mktemp -d)"
+          export TEST_SMTP_CERT="$TEST_SMTP_CAPTURE_DIR/smtp.crt"
+          export TEST_SMTP_KEY="$TEST_SMTP_CAPTURE_DIR/smtp.key"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout "$TEST_SMTP_KEY" -out "$TEST_SMTP_CERT" \
+            -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost' >/tmp/ci-cert.log 2>&1
+          php tests/smtp_sink.php >/tmp/ci-smtp.log 2>&1 &
+          php -d openssl.cafile="$TEST_SMTP_CERT" -S 127.0.0.1:8011 -t public public/router.php >/tmp/ci-app.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8011/auth/setup >/dev/null; then break; fi
+            sleep 1
+          done
+          if ! php tests/integration.php; then cat /tmp/ci-app.log /tmp/ci-smtp.log; exit 1; fi

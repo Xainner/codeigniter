@@ -11,4 +11,9 @@ if ($file !== false && strncmp($file, $public_prefix, strlen($public_prefix)) ==
     return false;
 }
 
+// PHP's built-in server may set SCRIPT_NAME to a dotted route segment
+// (IonAuth activation tokens contain a dot). CI3 then strips the route.
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['PHP_SELF'] = '/index.php';
+$_SERVER['SCRIPT_FILENAME'] = __DIR__.'/index.php';
 require __DIR__.'/index.php';
