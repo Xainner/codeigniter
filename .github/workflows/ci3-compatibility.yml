@@ -19,6 +19,8 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: xml
           coverage: none
       - run: php -l system/core/CodeIgniter.php && php -l system/helpers/text_helper.php && php -l system/libraries/Session/PHP8SessionWrapper.php && php -l system/libraries/Xmlrpc.php && php -l system/libraries/Xmlrpcs.php
       - run: php -d error_reporting=E_ALL tests/core_345_smoke.php
+      - run: php -d error_reporting=E_ALL tests/xmlrpc_345_smoke.php
