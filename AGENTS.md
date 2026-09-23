@@ -6,8 +6,8 @@ Project rules for AI agents and developers.
 
 - **Framework**: CodeIgniter (`pocketarc/codeigniter` 3.4.5) installed by Composer in `vendor/pocketarc/codeigniter/system/`.
 - **Auth**: IonAuth in `application/third_party/ion_auth` (registered as a package in `autoload.php`).
-- **PHP**: >= 8.4 with `openssl`, `gd`, `mysqli` and `xml`.
-- **Email**: PHPMailer 7.1 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API, falls back to native transport if vendor is missing).
+- **PHP**: >= 8.4 with `curl`, `openssl`, `gd`, `mbstring`, `mysqli` and `xml`.
+- **Email**: PHPMailer 7.1 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API). The web entry point requires Composer dependencies.
 - **API**: `chriskacerguis/codeigniter-restserver` — config in `application/config/rest.php`, example controller `application/controllers/Api.php`.
 - **Composer**: autoloads root `vendor/autoload.php`. Commit `composer.lock` and keep Composer's platform PHP at 8.4.
 
@@ -19,21 +19,21 @@ php -S localhost:8000 -t public public/router.php
 ```
 
 1. Set `APP_KEY` (64 hexadecimal characters), `APP_URL`, `CI_ENV`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASS` in the PHP process environment. `APP_KEY` is required even in development.
-2. Import `database/database.sql` (IonAuth schema + seed admin `admin@admin.com`).
-3. Configure `application/config/email.php` (SMTP) for real email delivery.
+2. Import `database/database.sql` into an empty database. Set a random `APP_SETUP_TOKEN` of at least 32 characters, then create the first administrator at `/auth/setup`. The wizard permanently closes after completion.
+3. Configure and test SMTP from `/auth/settings`. Public registration starts disabled.
 
-Useful URLs: `/auth/login`, `/auth/register`, `/auth/forgot_password`, `/api/ping` (health check).
+Useful URLs: `/auth`, `/auth/settings`, `/auth/login`, `/auth/setup`, `/auth/register` (when enabled), `/auth/forgot_password`, `/api/ping`.
 
 ## Architecture
 
 ```
 application/
-  controllers/   Auth (IonAuth flows: login/register/forgot/reset, HTML + AJAX JSON), Api (REST), Welcome
-  models/        (empty today — business logic lives in controllers/libraries)
+  controllers/   Auth, Setup, Admin_users, Admin_groups, Admin_settings, Brand, Api, Welcome
+  models/        App_settings_model, Admin_user_model, Rate_limiter_model
   libraries/     MY_Email (PHPMailer transport for CI_Email)
   core/          MY_Exceptions keeps HTML error escaping outside vendor/
   config/        database.php, email.php, rest.php, routes.php, config.php (subclass_prefix)
-  views/         auth/ (all auth pages on auth_template.php), errors/, welcome_message.php
+  views/         auth/, dashboard/, errors/, welcome_message.php
   language/      english/ and spanish/ packs for auth, ion_auth, rest (default language: english)
   third_party/   ion_auth (library + model + its own config/ion_auth.php)
 database/        database.sql (full base schema) + upgrade_*.sql migrations
@@ -74,8 +74,8 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
 ## Database
 
 - **All** SQL lives in `database/`.
-- `database/database.sql` is the **complete base schema** (from-scratch setup). Currently holds the
-  IonAuth schema (`users`, `groups`, `users_groups`, `login_attempts`) plus seed data.
+- `database/database.sql` is the **complete base schema** (from-scratch setup). It includes IonAuth,
+  settings, audit and rate-limit tables but no known administrator credentials.
 - **Mandatory**: every DB change must be reflected in the SQL scripts, not done "by hand" on a server.
 
 ### Reflecting a DB change
@@ -108,7 +108,7 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
 
 - Keep CSRF enabled (`csrf_protection = TRUE`) with the token present in every POST form,
   including auth AJAX.
-  - Auth views add a second layer: a session-based CSRF nonce
+- Auth views add a second layer: a session-based CSRF nonce
     (`_get_csrf_nonce()` / `_valid_csrf_nonce()` in `Auth.php`). Keep both in place.
 - Cookies: `httponly` + `samesite=Lax`; do not weaken without review.
 - Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing.
@@ -116,6 +116,8 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
 - Never log sensitive data (passwords, tokens, API keys).
 - Never put real credentials in the repo. The database reads environment variables, and `APP_KEY`
   must be a stable, external 64-character hexadecimal key. Do not disclose or rotate it casually.
+- Keep `APP_SETUP_TOKEN` outside the repository and remove it from the runtime environment after setup.
+- Store brand images only under private `storage/brand/`; never serve that directory directly.
 - Configure the web server's document root as `public/`; `application/`, `vendor/` and storage
   must stay outside it. Keep `public/.htaccess` and the development router restrictive.
 
@@ -129,11 +131,10 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
 
 ## Gotchas
 
-- IonAuth only sends email when `use_ci_email = TRUE` in its config — currently `FALSE`, so
-  `forgotten_password()` and registration return the code/data instead of sending mail. Enable it
-  (and configure `email.php`) before expecting auth emails.
-- `database.sql` seeds a default admin account with a well-known hash — rotate credentials in any
-  real environment.
-- Bilingual UI: language packs live in `application/language/english|spanish`; the default is
-  `english`, so new user-facing strings need both packs.
-- `models/` is empty; do not assume every flow follows "controller → model" today.
+- `MY_Controller` applies database settings to IonAuth before construction and enables CI email.
+  SMTP is configured and verified in the dashboard; recovery reports unavailable until then.
+- Use `database/upgrade_auth_settings_20260923.sql` for existing databases. It marks setup complete
+  when users already exist, so existing installations cannot reopen the setup wizard.
+- IonAuth language packs live in `application/language/english|spanish`; the dashboard and setup copy
+  is Spanish. Keep new dashboard text consistent and escape it in views.
+- The integration workflow runs on PHP 8.4 with MariaDB and measures dashboard query counts.

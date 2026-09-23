@@ -9,7 +9,7 @@ CREATE TABLE `groups` (
   `name` varchar(20) NOT NULL,
   `description` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 #
 # Dumping data for table 'groups'
@@ -52,17 +52,10 @@ CREATE TABLE `users` (
   CONSTRAINT `uc_activation_selector` UNIQUE (`activation_selector`),
   CONSTRAINT `uc_forgotten_password_selector` UNIQUE (`forgotten_password_selector`),
   CONSTRAINT `uc_remember_selector` UNIQUE (`remember_selector`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 #
-# Dumping data for table 'users'
-#
-
-INSERT INTO `users` (`id`, `ip_address`, `username`, `password`, `email`, `activation_code`, `forgotten_password_code`, `created_on`, `last_login`, `active`, `first_name`, `last_name`, `company`, `phone`) VALUES
-     ('1','127.0.0.1','administrator','$2y$08$200Z6ZZbp3RAEXoaWcMA6uJOFicwNZaqk4oDhqTUiFXFe63MG.Daa','admin@admin.com','',NULL,'1268889823','1268889823','1', 'Admin','istrator','ADMIN','0');
-
-
 DROP TABLE IF EXISTS `users_groups`;
 
 #
@@ -79,12 +72,7 @@ CREATE TABLE `users_groups` (
   CONSTRAINT `uc_users_groups` UNIQUE (`user_id`, `group_id`),
   CONSTRAINT `fk_users_groups_users1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
   CONSTRAINT `fk_users_groups_groups1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-INSERT INTO `users_groups` (`id`, `user_id`, `group_id`) VALUES
-     (1,1,1),
-     (2,1,2);
-
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS `login_attempts`;
 
@@ -97,5 +85,35 @@ CREATE TABLE `login_attempts` (
   `ip_address` varchar(45) NOT NULL,
   `login` varchar(100) NOT NULL,
   `time` int(11) unsigned DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+  PRIMARY KEY (`id`),
+  KEY `idx_login_attempts_ip_time` (`ip_address`, `time`),
+  KEY `idx_login_attempts_login_time` (`login`, `time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `settings_audit`;
+CREATE TABLE `settings_audit` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `actor_user_id` int unsigned NOT NULL,
+  `changed_keys` text NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_settings_audit_actor` (`actor_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `app_settings`;
+CREATE TABLE `app_settings` (
+  `name` varchar(64) NOT NULL,
+  `value` text NOT NULL,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `app_settings` (`name`, `value`) VALUES ('setup_completed', '0');
+
+DROP TABLE IF EXISTS `request_limits`;
+CREATE TABLE `request_limits` (
+  `key_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `hits` int unsigned NOT NULL,
+  `expires_at` int unsigned NOT NULL,
+  PRIMARY KEY (`key_hash`),
+  KEY `idx_request_limits_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

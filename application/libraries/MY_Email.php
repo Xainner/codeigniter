@@ -343,11 +343,11 @@ class MY_Email extends CI_Email
 		catch (Exception $e)
 		{
 			$this->_set_error_message('lang:email_send_failure_smtp', $e->getMessage());
-			log_message('error', 'PHPMailer send failed: '.$e->getMessage());
+			log_message('error', 'PHPMailer transport failed');
 			return FALSE;
 		}
 
-		log_message('info', 'PHPMailer message sent successfully to '.implode(', ', $this->_pm_to));
+		log_message('info', 'PHPMailer message accepted by transport');
 
 		if ($auto_clear)
 		{

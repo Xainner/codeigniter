@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5e7a9dd846796b367e13d20d9849aa7d",
+    "content-hash": "2d8c5992b74fa2c4504cc6b49be0955b",
     "packages": [
         {
             "name": "chriskacerguis/codeigniter-restserver",
@@ -174,6 +174,7 @@
         "ext-openssl": "*",
         "ext-gd": "*",
         "ext-mysqli": "*",
+        "ext-mbstring": "*",
         "ext-xml": "*"
     },
     "platform-dev": {},

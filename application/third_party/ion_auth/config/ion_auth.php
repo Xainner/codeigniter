@@ -156,7 +156,7 @@ $config['recheck_timer']              = 0;                   /* The number of se
  |
  | Please customize
  */
-$config['session_hash'] = '9077f6eee86fcee58a40bcdc186353e5461904f7';
+$config['session_hash'] = hash('sha256', (string) getenv('APP_KEY') . ':ion-auth-session');
 
 /*
  | -------------------------------------------------------------------------
