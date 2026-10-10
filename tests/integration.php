@@ -290,6 +290,8 @@ try {
         'member signs in with the new password');
     $selfForm = http('GET', '/auth/edit_user/' . $id);
     check(str_contains($selfForm['body'], 'name="current_password"'), 'own profile asks for the current password');
+    check(str_contains($selfForm['body'], 'Mi perfil') && !str_contains($selfForm['body'], '/auth/settings')
+        && !str_contains($selfForm['body'], 'name="groups[]"'), 'member profile hides administration navigation');
     $selfChange = [
         'id' => (string) $id, 'first_name' => 'Grace', 'last_name' => 'Hopper Jr',
         'email' => 'grace.hopper@example.test', 'phone' => '', 'company' => '',

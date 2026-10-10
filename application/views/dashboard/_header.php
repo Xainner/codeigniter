@@ -9,6 +9,9 @@ $brand_color = (string) ($dashboard_settings['brand_color'] ?? '#3d5afe');
 $brand_color = preg_match('/^#[0-9a-fA-F]{6}$/', $brand_color) ? $brand_color : '#3d5afe';
 $page_title = (string) ($page_title ?? 'Administración');
 $active_nav = (string) ($active_nav ?? 'users');
+// Members reach this shell only for their own profile.
+$show_admin_nav = !isset($is_admin) || $is_admin;
+$home_url = site_url($show_admin_nav ? 'auth' : '/');
 ?>
 <!doctype html>
 <html lang="es">
@@ -24,11 +27,12 @@ $active_nav = (string) ($active_nav ?? 'users');
 <a class="skip-link" href="#main-content">Saltar al contenido</a>
 <div class="dashboard-shell">
     <aside class="sidebar" id="dashboard-sidebar" aria-label="Navegación principal">
-        <a class="brand" href="<?php echo html_escape(site_url('auth')); ?>" aria-label="<?php echo html_escape($site_name); ?>, inicio">
+        <a class="brand" href="<?php echo html_escape($home_url); ?>" aria-label="<?php echo html_escape($site_name); ?>, inicio">
             <span class="brand-mark" aria-hidden="true"><?php if ($brand_logo_url !== null): ?><img src="<?php echo html_escape($brand_logo_url); ?>" alt=""><?php else: ?>C<?php endif; ?></span>
-            <span class="brand-copy"><strong><?php echo html_escape($site_name); ?></strong><small>Panel de administración</small></span>
+            <span class="brand-copy"><strong><?php echo html_escape($site_name); ?></strong><small><?php echo $show_admin_nav ? 'Panel de administración' : 'Mi cuenta'; ?></small></span>
         </a>
         <nav class="sidebar-nav" aria-label="Secciones">
+            <?php if ($show_admin_nav): ?>
             <a class="nav-link<?php echo $active_nav === 'users' ? ' is-active' : ''; ?>" <?php echo $active_nav === 'users' ? 'aria-current="page"' : ''; ?> href="<?php echo html_escape(site_url('auth')); ?>">
                 <span class="nav-icon" aria-hidden="true">◫</span>Usuarios
             </a>
@@ -38,9 +42,14 @@ $active_nav = (string) ($active_nav ?? 'users');
             <a class="nav-link<?php echo $active_nav === 'settings' ? ' is-active' : ''; ?>" <?php echo $active_nav === 'settings' ? 'aria-current="page"' : ''; ?> href="<?php echo html_escape(site_url('auth/settings')); ?>">
                 <span class="nav-icon" aria-hidden="true">⚙</span>Configuración
             </a>
+            <?php else: ?>
+            <a class="nav-link is-active" aria-current="page" href="<?php echo html_escape(current_url()); ?>">
+                <span class="nav-icon" aria-hidden="true">◫</span>Mi perfil
+            </a>
+            <?php endif; ?>
         </nav>
         <div class="sidebar-foot">
-            <span class="sidebar-foot-label">Administración</span>
+            <span class="sidebar-foot-label"><?php echo $show_admin_nav ? 'Administración' : 'Cuenta'; ?></span>
             <form method="post" action="<?php echo html_escape(site_url('auth/logout')); ?>">
                 <input type="hidden" name="<?php echo html_escape($this->security->get_csrf_token_name()); ?>" value="<?php echo html_escape($this->security->get_csrf_hash()); ?>">
                 <button type="submit" class="sidebar-logout">Cerrar sesión <span aria-hidden="true">↗</span></button>
