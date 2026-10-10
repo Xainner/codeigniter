@@ -85,11 +85,16 @@ class Admin_users extends MY_Controller
                     'email' => strtolower(trim($posted->email)), 'phone' => $posted->phone,
                     'company' => $posted->company,
                 ];
-                if ($this->input->post('password') !== '') {
+                $password_changed = (string) $this->input->post('password') !== '';
+                if ($password_changed) {
                     $data['password'] = (string) $this->input->post('password');
                 }
+                $this->load->model('Admin_user_model');
                 $this->db->trans_begin();
                 $updated = $this->ion_auth->update($id, $data);
+                if ($updated && $password_changed) {
+                    $updated = $this->Admin_user_model->clear_credential_tokens($id);
+                }
                 if ($updated && $is_admin) {
                     $updated = $this->ion_auth->remove_from_group('', $id);
                     foreach ($selected as $group_id) {
@@ -98,6 +103,10 @@ class Admin_users extends MY_Controller
                 }
                 if ($updated && $this->db->trans_status()) {
                     $this->db->trans_commit();
+                    if ($password_changed && (int) $current->id === $id) {
+                        // Other sessions end on their next request; keep this one.
+                        $this->_bind_session_password();
+                    }
                     $this->session->set_flashdata('message', 'Usuario actualizado.');
                     redirect($is_admin ? 'auth' : '/');
                     return;

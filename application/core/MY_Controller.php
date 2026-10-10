@@ -4,6 +4,7 @@
 class MY_Controller extends CI_Controller
 {
     public $app_settings;
+    private $session_password_checked = FALSE;
 
     public function __construct()
     {
@@ -46,6 +47,49 @@ class MY_Controller extends CI_Controller
         ];
         $this->config->set_item('ion_auth', $ion);
         $this->load->library('ion_auth');
+
+        // Ion Auth only rechecks that the account is active. Binding each
+        // session to the password hash also ends other sessions after any
+        // password change (profile edit, reset, change or direct update).
+        $this->ion_auth->set_hook('post_set_session', 'password_binding', $this, '_bind_session_password', []);
+        $this->ion_auth->set_hook('logged_in', 'password_binding', $this, '_check_session_password', []);
+    }
+
+    /** Ion Auth hook: remembers which password hash authenticated this session. */
+    public function _bind_session_password()
+    {
+        $user = $this->session_user_password();
+        $this->session->set_userdata('auth_password_fp', $user ? $this->password_fingerprint($user->password) : '');
+    }
+
+    /** Ion Auth hook: ends the session when the password changed after login. */
+    public function _check_session_password()
+    {
+        if ($this->session_password_checked) {
+            return;
+        }
+        $this->session_password_checked = TRUE;
+        $user_id = (int) $this->session->userdata('user_id');
+        if ($user_id === 0) {
+            return;
+        }
+        $user = $this->session_user_password();
+        $stored = $this->session->userdata('auth_password_fp');
+        if ($user && is_string($stored) && hash_equals($this->password_fingerprint($user->password), $stored)) {
+            return;
+        }
+        // The remember-me token belongs to the old credentials as well.
+        $this->revoke_remember_token($user_id);
+        // logout() destroys the stored session but leaves 'identity' in memory,
+        // which would keep the rest of this request authenticated.
+        $this->session->unset_userdata(['identity', 'auth_password_fp']);
+        $this->ion_auth->logout();
+    }
+
+    /** Clears the persistent login token that Ion Auth's logout leaves in the database. */
+    protected function revoke_remember_token($user_id)
+    {
+        $this->db->update('users', ['remember_selector' => NULL, 'remember_code' => NULL], ['id' => (int) $user_id]);
     }
 
     protected function require_admin()
@@ -88,5 +132,17 @@ class MY_Controller extends CI_Controller
             'csrf_name' => $this->security->get_csrf_token_name(),
             'csrf_hash' => $this->security->get_csrf_hash(),
         ];
+    }
+
+    private function session_user_password()
+    {
+        $user_id = (int) $this->session->userdata('user_id');
+        return $user_id === 0 ? NULL
+            : $this->db->select('password')->get_where('users', ['id' => $user_id])->row();
+    }
+
+    private function password_fingerprint($hash)
+    {
+        return hash_hmac('sha256', (string) $hash, (string) $this->config->item('session_hash', 'ion_auth'));
     }
 }

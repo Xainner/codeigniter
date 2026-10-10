@@ -154,6 +154,11 @@ class Auth extends MY_Controller
 			show_404();
 			return;
 		}
+		// Ion Auth's logout leaves the remember-me token valid in the database.
+		$user_id = (int) $this->session->userdata('user_id');
+		if ($user_id !== 0) {
+			$this->revoke_remember_token($user_id);
+		}
 		$this->ion_auth->logout();
 
 		// redirect them to the login page

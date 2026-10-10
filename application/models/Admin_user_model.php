@@ -1,6 +1,6 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed');
 
-/** Read-only queries for the admin user directory. */
+/** Queries for the admin user directory. */
 class Admin_user_model extends CI_Model
 {
     private function search($query)
@@ -45,5 +45,15 @@ class Admin_user_model extends CI_Model
             $by_user[(int) $group->user_id]->groups[] = $group;
         }
         return $users;
+    }
+
+    /** Invalidates persistent login and recovery tokens issued for the previous password. */
+    public function clear_credential_tokens($id)
+    {
+        return $this->db->update('users', [
+            'remember_selector' => NULL, 'remember_code' => NULL,
+            'forgotten_password_selector' => NULL, 'forgotten_password_code' => NULL,
+            'forgotten_password_time' => NULL,
+        ], ['id' => (int) $id]);
     }
 }

@@ -255,6 +255,35 @@ try {
     $page = http('GET', '/auth?q=grace');
     check(redirected(http('POST', '/auth/activate/' . $id, csrf($page['body']) + ['auth_nonce' => hidden($page['body'], 'auth_nonce')])),
         'admin reactivates user');
+    $cookieFile = $memberCookieFile;
+    $memberLogin = http('GET', '/auth/login');
+    http('POST', '/auth/login', csrf($memberLogin['body']) + [
+        'identity' => 'grace@example.test', 'password' => 'AnotherStrongPassword123!',
+    ], true);
+    check(http('GET', '/auth/edit_user/' . $id)['status'] === 200, 'reactivated member signs in again');
+    $cookieFile = $adminCookieFile;
+    $conn->query("UPDATE users SET remember_selector='stale-selector', remember_code='stale' WHERE id=" . $id);
+    $editForm = http('GET', '/auth/edit_user/' . $id);
+    $passwordReset = http('POST', '/auth/edit_user/' . $id, csrf($editForm['body']) + [
+        'auth_nonce' => hidden($editForm['body'], 'auth_nonce'), 'id' => (string) $id,
+        'first_name' => 'Grace', 'last_name' => 'Hopper Jr', 'email' => 'grace@example.test',
+        'phone' => '', 'company' => '', 'password' => 'ReplacedStrongPassword123!',
+        'password_confirm' => 'ReplacedStrongPassword123!', 'groups' => ['2', '3'],
+    ]);
+    $tokens = $conn->query('SELECT remember_selector FROM users WHERE id=' . $id)->fetch_assoc();
+    check(redirected($passwordReset) && $tokens['remember_selector'] === null,
+        'admin password change clears remember-me tokens');
+    $cookieFile = $memberCookieFile;
+    check(http('GET', '/auth/edit_user/' . $id)['status'] === 403,
+        'password change ends existing sessions of that user');
+    $memberLogin = http('GET', '/auth/login');
+    $relogin = http('POST', '/auth/login', csrf($memberLogin['body']) + [
+        'identity' => 'grace@example.test', 'password' => 'ReplacedStrongPassword123!',
+    ], true);
+    check($relogin['status'] === 200 && http('GET', '/auth/edit_user/' . $id)['status'] === 200,
+        'member signs in with the new password');
+    $cookieFile = $adminCookieFile;
+    check(http('GET', '/auth')['status'] === 200, 'admin session survives changes to another account');
     $page = http('GET', '/auth?q=ada');
     check(http('POST', '/auth/deactivate/1', csrf($page['body']) + ['auth_nonce' => hidden($page['body'], 'auth_nonce')])['status'] === 403,
         'admin cannot deactivate own account');
@@ -364,12 +393,21 @@ try {
         $adminHash = $conn->query("SELECT password FROM users WHERE email='ada@example.test'")->fetch_assoc()['password'];
         check(redirected($reset) && password_verify('RecoveredPassword123!', $adminHash),
             'recovery token changes the password');
+        check(http('GET', '/auth/settings')['status'] === 403, 'password recovery ends the previous admin session');
+        $login = http('GET', '/auth/login');
+        $again = http('POST', '/auth/login', csrf($login['body']) + [
+            'identity' => 'ada@example.test', 'password' => 'RecoveredPassword123!',
+        ], true);
+        check($again['status'] === 200, 'admin signs in with the recovered password');
     }
 
     check(http('GET', '/auth/logout')['status'] === 404, 'GET cannot log out');
     $page = http('GET', '/auth');
+    $conn->query("UPDATE users SET remember_selector='admin-selector', remember_code='admin' WHERE id=1");
     $logout = http('POST', '/auth/logout', csrf($page['body']));
     check(redirected($logout), 'logout uses POST (HTTP ' . $logout['status'] . ')');
+    $tokens = $conn->query('SELECT remember_selector FROM users WHERE id=1')->fetch_assoc();
+    check($tokens['remember_selector'] === null, 'logout revokes the remember-me token');
     $memberLogin = http('GET', '/auth/login');
     $memberResult = http('POST', '/auth/login', csrf($memberLogin['body']) + [
         'identity' => 'public@example.test', 'password' => 'PublicStrongPassword123!',
