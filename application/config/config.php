@@ -213,7 +213,9 @@ $config['directory_trigger'] = 'd';
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 0;
+// Errors are logged by default; LOG_THRESHOLD overrides the level (0 disables logging).
+$config['log_threshold'] = getenv('LOG_THRESHOLD') !== FALSE && ctype_digit((string) getenv('LOG_THRESHOLD'))
+	? (int) getenv('LOG_THRESHOLD') : 1;
 
 /*
 |--------------------------------------------------------------------------
@@ -455,7 +457,9 @@ $config['csrf_exclude_uris'] = array();
 | by the output class.  Do not 'echo' any values with compression enabled.
 |
 */
-$config['compress_output'] = TRUE;
+// Compression belongs to the web server (public/.htaccess); PHP-level gzip
+// would compress twice and recompress binary responses such as the brand logo.
+$config['compress_output'] = FALSE;
 
 /*
 |--------------------------------------------------------------------------
@@ -486,4 +490,6 @@ $config['time_reference'] = 'local';
 | Comma-separated:	'10.0.1.200,192.168.5.0/24'
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
-$config['proxy_ips'] = '';
+// Without the real proxy list every visitor behind a load balancer shares one IP,
+// which turns per-IP login lockouts and rate limits into global ones.
+$config['proxy_ips'] = trim((string) getenv('TRUSTED_PROXIES'));
