@@ -5,7 +5,8 @@ class Admin_groups extends MY_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->library(['ion_auth', 'form_validation']);
+        $this->load_auth();
+        $this->load->library('form_validation');
         $this->load->helper(['url', 'form']);
     }
 
@@ -92,16 +93,6 @@ class Admin_groups extends MY_Controller
         $this->load->view('dashboard/group_form', [
             'mode' => $mode, 'group' => $group, 'errors' => $errors,
             'message' => '', 'settings' => $this->app_settings,
-            'csrf_name' => $this->security->get_csrf_token_name(),
-            'csrf_hash' => $this->security->get_csrf_hash(),
-        ]);
-    }
-
-    private function require_admin()
-    {
-        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            show_error('Acceso denegado', 403);
-            exit;
-        }
+        ] + $this->csrf_data());
     }
 }

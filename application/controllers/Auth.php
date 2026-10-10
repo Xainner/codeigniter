@@ -12,7 +12,8 @@ class Auth extends MY_Controller
 	public function __construct()
 	{
 		parent::__construct();
-		$this->load->library(['ion_auth', 'form_validation']);
+		$this->load_auth();
+		$this->load->library('form_validation');
 		$this->load->helper(['url', 'language', 'form']);
 
 		$this->form_validation->set_error_delimiters($this->config->item('error_start_delimiter', 'ion_auth'), $this->config->item('error_end_delimiter', 'ion_auth'));
@@ -30,13 +31,9 @@ class Auth extends MY_Controller
 			// redirect them to the login page
 			redirect('auth/login', 'refresh');
 		}
-		else if (!$this->ion_auth->is_admin()) // remove this elseif if you want to enable this for non-admins
-		{
-			// redirect them to the home page because they must be an administrator to view this
-			show_error('You must be an administrator to view this page.', 403);
-		}
 		else
 		{
+			$this->require_admin();
 			$listing_queries_start = count($this->db->queries);
 			$this->load->model('Admin_user_model');
 			$this->load->library('pagination');
@@ -62,12 +59,9 @@ class Auth extends MY_Controller
 				'query' => $query,
 				'message' => strip_tags((string) $this->session->flashdata('message')),
 				'settings' => $this->app_settings,
-				'csrf_name' => $this->security->get_csrf_token_name(),
-				'csrf_hash' => $this->security->get_csrf_hash(),
 				'nonce_name' => 'auth_nonce',
-				'nonce_hash' => bin2hex(random_bytes(20)),
-			];
-			$this->session->set_flashdata('admin_nonce', $this->data['nonce_hash']);
+				'nonce_hash' => $this->_get_csrf_nonce()['auth_nonce'],
+			] + $this->csrf_data();
 			if (ENVIRONMENT === 'testing') {
 				$this->output->set_header('X-Query-Count: ' . (count($this->db->queries) - $listing_queries_start));
 			}
@@ -160,9 +154,6 @@ class Auth extends MY_Controller
 			show_404();
 			return;
 		}
-		$this->data['title'] = "Logout";
-
-		// log the user out
 		$this->ion_auth->logout();
 
 		// redirect them to the login page
@@ -174,49 +165,20 @@ class Auth extends MY_Controller
 	 */
 	public function change_password()
 	{
-		$this->form_validation->set_rules('old', $this->lang->line('change_password_validation_old_password_label'), 'required');
-		$this->form_validation->set_rules('new', $this->lang->line('change_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|matches[new_confirm]');
-		$this->form_validation->set_rules('new_confirm', $this->lang->line('change_password_validation_new_password_confirm_label'), 'required');
-
 		if (!$this->ion_auth->logged_in())
 		{
 			redirect('auth/login', 'refresh');
 		}
 
-		$user = $this->ion_auth->user()->row();
+		$this->form_validation->set_rules('old', $this->lang->line('change_password_validation_old_password_label'), 'required');
+		$this->form_validation->set_rules('new', $this->lang->line('change_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|matches[new_confirm]');
+		$this->form_validation->set_rules('new_confirm', $this->lang->line('change_password_validation_new_password_confirm_label'), 'required');
 
 		if ($this->form_validation->run() === FALSE)
 		{
-			// display the form
-			// set the flash data error message if there is one
+			$this->data['title'] = $this->lang->line('change_password_heading');
 			$this->data['message'] = (validation_errors()) ? validation_errors() : $this->session->flashdata('message');
-
 			$this->data['min_password_length'] = $this->config->item('min_password_length', 'ion_auth');
-			$this->data['old_password'] = [
-				'name' => 'old',
-				'id' => 'old',
-				'type' => 'password',
-			];
-			$this->data['new_password'] = [
-				'name' => 'new',
-				'id' => 'new',
-				'type' => 'password',
-				'pattern' => '^.{' . $this->data['min_password_length'] . '}.*$',
-			];
-			$this->data['new_password_confirm'] = [
-				'name' => 'new_confirm',
-				'id' => 'new_confirm',
-				'type' => 'password',
-				'pattern' => '^.{' . $this->data['min_password_length'] . '}.*$',
-			];
-			$this->data['user_id'] = [
-				'name' => 'user_id',
-				'id' => 'user_id',
-				'type' => 'hidden',
-				'value' => $user->id,
-			];
-
-			// render
 			$this->_render_page('auth' . DIRECTORY_SEPARATOR . 'change_password', $this->data);
 		}
 		else
@@ -522,33 +484,6 @@ class Auth extends MY_Controller
 		}
 		$this->session->set_flashdata('message', $message);
 		redirect($success ? 'auth/login' : 'auth/register');
-	}
-
-	/**
-	 * @return array A CSRF key-value pair
-	 */
-	public function _get_csrf_nonce()
-	{
-		$key = 'auth_nonce';
-		$value = bin2hex(random_bytes(20));
-		$this->session->set_flashdata('csrfkey', $key);
-		$this->session->set_flashdata('csrfvalue', $value);
-
-		return [$key => $value];
-	}
-
-	/**
-	 * @return bool Whether the posted CSRF token matches
-	 */
-	public function _valid_csrf_nonce(){
-		$key = $this->session->flashdata('csrfkey');
-		$expected = $this->session->flashdata('csrfvalue');
-		$given = is_string($key) ? $this->input->post($key) : NULL;
-		if (is_string($expected) && is_string($given) && hash_equals($expected, $given))
-		{
-			return TRUE;
-		}
-			return FALSE;
 	}
 
 	/**

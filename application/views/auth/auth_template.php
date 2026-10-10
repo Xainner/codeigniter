@@ -53,6 +53,17 @@
                 'loading' => 'Actualizando...',
                 'ajax' => FALSE,
             ],
+            'change_password' => [
+                'eyebrow' => 'Seguridad',
+                'heading' => 'Cambiar contraseña',
+                'description' => 'Confirma tu contraseña actual y define una nueva. Después volverás a iniciar sesión.',
+                'form_id' => 'changePasswordForm',
+                'endpoint' => site_url('auth/change_password'),
+                'success_title' => 'Contraseña actualizada',
+                'submit' => 'Cambiar contraseña',
+                'loading' => 'Actualizando...',
+                'ajax' => FALSE,
+            ],
         ];
 
         $view = $config[$auth_variant] ?? $config['login'];
@@ -193,6 +204,25 @@
                     <div class="auth-links">
                         <a href="<?php echo base_url('auth/login'); ?>">Volver a iniciar sesion</a>
                     </div>
+                <?php elseif ($auth_variant === 'change_password'): ?>
+                    <form class="auth-form" id="changePasswordForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="false">
+                        <input type="hidden" name="<?php echo html_escape($this->security->get_csrf_token_name()); ?>" value="<?php echo html_escape($this->security->get_csrf_hash()); ?>">
+                        <div class="form-group">
+                            <label class="form-label" for="old">Contraseña actual</label>
+                            <input type="password" class="form-control" id="old" name="old" autocomplete="current-password" required>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="new">Nueva contraseña</label>
+                                <input type="password" class="form-control" id="new" name="new" placeholder="Mínimo <?php echo (int) $min_password_length; ?> caracteres" minlength="<?php echo (int) $min_password_length; ?>" autocomplete="new-password" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="new_confirm">Confirmar contraseña</label>
+                                <input type="password" class="form-control" id="new_confirm" name="new_confirm" placeholder="Repite la contraseña" autocomplete="new-password" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="auth-button" data-submit-button><?php echo html_escape($view['submit']); ?></button>
+                    </form>
                 <?php endif; ?>
 
             </section>

@@ -5,7 +5,8 @@ class Admin_users extends MY_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->library(['ion_auth', 'form_validation']);
+        $this->load_auth();
+        $this->load->library('form_validation');
         $this->load->helper(['url', 'form']);
     }
 
@@ -24,16 +25,11 @@ class Admin_users extends MY_Controller
             }
             if (!$errors) {
                 $email = strtolower(trim($user->email));
-                $ion = $this->config->item('ion_auth');
-                $original = $ion;
-                $ion['email_activation'] = FALSE;
-                $this->config->set_item('ion_auth', $ion);
                 $this->db->trans_begin();
-                $id = $this->ion_auth->register($email, (string) $this->input->post('password'), $email, [
+                $id = $this->register_active_user($email, (string) $this->input->post('password'), [
                     'first_name' => $user->first_name, 'last_name' => $user->last_name,
                     'phone' => $user->phone, 'company' => $user->company,
                 ], $selected);
-                $this->config->set_item('ion_auth', $original);
                 if ($id && $this->db->trans_status()) {
                     $this->db->trans_commit();
                     $this->session->set_flashdata('message', 'Usuario creado.');
@@ -64,7 +60,7 @@ class Admin_users extends MY_Controller
         $selected = array_map('intval', array_column($this->ion_auth->get_users_groups($id)->result_array(), 'id'));
         $errors = [];
         if ($this->input->method(TRUE) === 'POST') {
-            if (!$this->valid_nonce() || $id !== (int) $this->input->post('id')) {
+            if (!$this->_valid_csrf_nonce() || $id !== (int) $this->input->post('id')) {
                 show_error('Solicitud inválida', 403);
                 return;
             }
@@ -210,46 +206,19 @@ class Admin_users extends MY_Controller
 
     private function render_form($mode, $user, array $selected, array $errors, $is_admin = TRUE)
     {
-        $nonce = $this->nonce();
         $this->load->view('dashboard/user_form', [
             'mode' => $mode, 'user' => $user,
             'groups' => $is_admin ? $this->ion_auth->groups()->result() : [],
             'selected_group_ids' => $selected,
             'errors' => $errors, 'message' => '', 'settings' => $this->app_settings,
-            'csrf_name' => $this->security->get_csrf_token_name(),
-            'csrf_hash' => $this->security->get_csrf_hash(),
-            'nonce_name' => $nonce['name'], 'nonce_hash' => $nonce['value'],
-        ]);
-    }
-
-    private function nonce()
-    {
-        $name = 'auth_nonce';
-        $value = bin2hex(random_bytes(20));
-        $this->session->set_flashdata('admin_nonce', $value);
-        return ['name' => $name, 'value' => $value];
-    }
-
-    private function valid_nonce()
-    {
-        $expected = $this->session->flashdata('admin_nonce');
-        $given = $this->input->post('auth_nonce');
-        return is_string($expected) && is_string($given) && hash_equals($expected, $given);
+            'nonce_name' => 'auth_nonce', 'nonce_hash' => $this->_get_csrf_nonce()['auth_nonce'],
+        ] + $this->csrf_data());
     }
 
     private function require_post_nonce()
     {
-        if ($this->input->method(TRUE) !== 'POST' || !$this->valid_nonce()) {
+        if ($this->input->method(TRUE) !== 'POST' || !$this->_valid_csrf_nonce()) {
             show_error('Solicitud inválida', 403);
-            exit;
-        }
-    }
-
-    private function require_admin()
-    {
-        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            show_error('Acceso denegado', 403);
-            exit;
         }
     }
 
