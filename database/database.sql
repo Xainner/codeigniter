@@ -1,3 +1,5 @@
+-- Drop the join table first so this script can also rebuild an existing schema.
+DROP TABLE IF EXISTS `users_groups`;
 DROP TABLE IF EXISTS `groups`;
 
 #
