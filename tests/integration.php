@@ -282,6 +282,28 @@ try {
     ], true);
     check($relogin['status'] === 200 && http('GET', '/auth/edit_user/' . $id)['status'] === 200,
         'member signs in with the new password');
+    $selfForm = http('GET', '/auth/edit_user/' . $id);
+    check(str_contains($selfForm['body'], 'name="current_password"'), 'own profile asks for the current password');
+    $selfChange = [
+        'id' => (string) $id, 'first_name' => 'Grace', 'last_name' => 'Hopper Jr',
+        'email' => 'grace.hopper@example.test', 'phone' => '', 'company' => '',
+        'password' => '', 'password_confirm' => '', 'current_password' => 'WrongPassword123!',
+    ];
+    $rejected = http('POST', '/auth/edit_user/' . $id, csrf($selfForm['body'])
+        + ['auth_nonce' => hidden($selfForm['body'], 'auth_nonce')] + $selfChange);
+    $stillOld = $conn->query('SELECT email FROM users WHERE id=' . $id)->fetch_assoc();
+    check($rejected['status'] === 200 && str_contains($rejected['body'], 'contraseña actual')
+        && $stillOld['email'] === 'grace@example.test', 'own email change requires the current password');
+    $selfChange['current_password'] = 'ReplacedStrongPassword123!';
+    $selfChange['password'] = $selfChange['password_confirm'] = 'SelfChosenPassword123!';
+    $accepted = http('POST', '/auth/edit_user/' . $id, csrf($rejected['body'])
+        + ['auth_nonce' => hidden($rejected['body'], 'auth_nonce')] + $selfChange);
+    $changed = $conn->query('SELECT email, password FROM users WHERE id=' . $id)->fetch_assoc();
+    check(redirected($accepted) && $changed['email'] === 'grace.hopper@example.test'
+        && password_verify('SelfChosenPassword123!', $changed['password']),
+        'member changes own email and password after reauthentication');
+    check(http('GET', '/auth/edit_user/' . $id)['status'] === 200,
+        'the session that changed the password stays signed in');
     $cookieFile = $adminCookieFile;
     check(http('GET', '/auth')['status'] === 200, 'admin session survives changes to another account');
     $page = http('GET', '/auth?q=ada');

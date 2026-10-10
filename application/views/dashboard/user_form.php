@@ -13,6 +13,7 @@ $read = static function ($row, $key, $default = '') {
     return is_object($row) ? ($row->{$key} ?? $default) : $default;
 };
 $user_id = (int) $read($user, 'id', 0);
+$own_account = !empty($own_account);
 $action = $editing ? site_url('auth/edit_user/' . $user_id) : site_url('auth/create_user');
 $this->load->view('dashboard/_header', [
     'page_title' => $editing ? 'Editar usuario' : 'Crear usuario',
@@ -44,6 +45,9 @@ $this->load->view('dashboard/_header', [
             <div class="form-grid">
                 <div class="field"><label for="password">Contraseña<?php if (!$editing): ?> <span aria-hidden="true">*</span><?php endif; ?></label><input id="password" name="password" type="password" autocomplete="new-password" <?php echo $editing ? '' : 'required'; ?>></div>
                 <div class="field"><label for="password_confirm">Confirmar contraseña<?php if (!$editing): ?> <span aria-hidden="true">*</span><?php endif; ?></label><input id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" <?php echo $editing ? '' : 'required'; ?>></div>
+                <?php if ($own_account): ?>
+                <div class="field field-full"><label for="current_password">Contraseña actual</label><input id="current_password" name="current_password" type="password" autocomplete="current-password" aria-describedby="current-password-help"><small id="current-password-help">Obligatoria para cambiar tu correo o tu contraseña.</small></div>
+                <?php endif; ?>
             </div>
         </section>
         <section class="form-section" aria-labelledby="user-groups-heading">

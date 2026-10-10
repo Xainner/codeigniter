@@ -69,6 +69,17 @@ class Admin_users extends MY_Controller
             if (!$this->form_validation->run()) {
                 $errors[] = strip_tags(validation_errors());
             }
+            $credentials_changed = strtolower($posted->email) !== strtolower((string) $user->email)
+                || (string) $this->input->post('password') !== '';
+            if (!$errors && $credentials_changed && (int) $current->id === $id) {
+                // A borrowed session must not be enough to take over the account.
+                $this->load->model('Rate_limiter_model');
+                if (!$this->Rate_limiter_model->allow('reauth-user', (string) $id, 5, 900)) {
+                    $errors[] = 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.';
+                } elseif (!$this->ion_auth->verify_password((string) $this->input->post('current_password'), $user->password, $user->email)) {
+                    $errors[] = 'Escribe tu contraseña actual para cambiar el correo o la contraseña.';
+                }
+            }
             if ($is_admin) {
                 $selected = $this->group_ids($errors);
                 $admin_group = $this->db->get_where('groups', ['name' => 'admin'])->row();
@@ -116,7 +127,7 @@ class Admin_users extends MY_Controller
             }
             $user = (object) array_merge((array) $user, (array) $posted);
         }
-        $this->render_form('edit', $user, $selected, $errors, $is_admin);
+        $this->render_form('edit', $user, $selected, $errors, $is_admin, (int) $current->id === $id);
     }
 
     public function activate($id)
@@ -213,10 +224,10 @@ class Admin_users extends MY_Controller
         return $ids;
     }
 
-    private function render_form($mode, $user, array $selected, array $errors, $is_admin = TRUE)
+    private function render_form($mode, $user, array $selected, array $errors, $is_admin = TRUE, $own_account = FALSE)
     {
         $this->load->view('dashboard/user_form', [
-            'mode' => $mode, 'user' => $user,
+            'mode' => $mode, 'user' => $user, 'own_account' => $own_account, 'is_admin' => $is_admin,
             'groups' => $is_admin ? $this->ion_auth->groups()->result() : [],
             'selected_group_ids' => $selected,
             'errors' => $errors, 'message' => '', 'settings' => $this->app_settings,
