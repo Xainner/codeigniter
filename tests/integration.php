@@ -130,6 +130,12 @@ try {
     check(str_contains($login['headers'], 'X-Frame-Options: DENY')
         && str_contains($login['headers'], 'X-Content-Type-Options: nosniff'),
         'application responses include security headers');
+    $badLogin = http('POST', '/auth/login', csrf($login['body']) + [
+        'identity' => 'ada@example.test', 'password' => 'NotThePassword123!',
+    ], true);
+    check($badLogin['status'] === 401
+        && (json_decode($badLogin['body'], true)['message'] ?? '') === 'No se ha podido iniciar sesión',
+        'authentication messages use the Spanish language pack');
     $loginResult = http('POST', '/auth/login', csrf($login['body']) + [
         'identity' => 'ada@example.test', 'password' => 'VeryStrongPassword123!',
     ], true);
