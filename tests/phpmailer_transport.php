@@ -102,4 +102,10 @@ $plain->message('Hello plain text');
 check($plain->send(), 'Plain text message failed');
 check(strpos(CaptureMailer::$mime, 'Hello plain text') !== FALSE, 'Plain text body is missing');
 
+// Port 9 on loopback is closed in CI; verification must fail without throwing.
+$unreachable = new MY_Email(array('protocol' => 'smtp', 'smtp_host' => '127.0.0.1', 'smtp_port' => 9, 'smtp_timeout' => 2));
+check($unreachable->verify_transport() === FALSE, 'SMTP verification accepted an unreachable server');
+$local = new MY_Email(array('protocol' => 'mail'));
+check($local->verify_transport() === TRUE, 'Non-SMTP transports have no session to verify');
+
 echo "PHPMailer transport smoke test passed\n";

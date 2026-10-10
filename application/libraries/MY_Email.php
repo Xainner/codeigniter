@@ -358,6 +358,39 @@ class MY_Email extends CI_Email
 	}
 
 	/**
+	 * Open and close an SMTP session (connect, STARTTLS and AUTH) without
+	 * sending a message. Other transports have no session to verify.
+	 *
+	 * @return	bool
+	 */
+	public function verify_transport()
+	{
+		if ( ! $this->_pm_enabled || $this->_pm_mailer === NULL || $this->protocol !== 'smtp')
+		{
+			return TRUE;
+		}
+
+		try
+		{
+			$connected = $this->_pm_mailer->smtpConnect();
+		}
+		catch (Exception $e)
+		{
+			$connected = FALSE;
+		}
+		$this->_pm_mailer->smtpClose();
+
+		if ( ! $connected)
+		{
+			log_message('error', 'PHPMailer SMTP verification failed');
+		}
+
+		return $connected;
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
 	 * Build and configure a PHPMailer transport from the CI_Email settings
 	 *
 	 * @return	PHPMailer

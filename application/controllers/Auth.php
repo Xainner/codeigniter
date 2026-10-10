@@ -259,16 +259,13 @@ class Auth extends MY_Controller
 
 	private function recovery_transport_probe()
 	{
-		// Match the password-token work, then exercise the same SMTP transport
-		// without sending mail to an address that is not a registered account.
+		// Match the password-token work and open the same authenticated SMTP
+		// session, but send nothing: unknown addresses must not become a way
+		// to flood the sender mailbox or spend the SMTP quota.
 		password_hash(bin2hex(random_bytes(20)), PASSWORD_BCRYPT, ['cost' => 12]);
 		$this->email->clear(TRUE);
 		$this->email->initialize($this->config->item('email_config', 'ion_auth'));
-		$this->email->from($this->app_settings['smtp_from_email'], $this->app_settings['smtp_from_name']);
-		$this->email->to($this->app_settings['smtp_from_email']);
-		$this->email->subject('Comprobación de correo');
-		$this->email->message('Comprobación del servicio de recuperación.');
-		return $this->email->send();
+		return $this->email->verify_transport();
 	}
 
 	private function recovery_response($success, $message, $status)

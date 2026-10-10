@@ -372,11 +372,11 @@ try {
         $unknown = http('POST', '/auth/forgot_password', csrf($forgot['body']) + [
             'identity' => 'nobody@example.test',
         ], true);
-        $probeMail = newMessage($before);
         check($known['status'] === 200 && $known['body'] === $unknown['body']
-            && $knownMail['recipient'] === 'ada@example.test'
-            && $probeMail['recipient'] === 'noreply@example.test',
+            && $knownMail['recipient'] === 'ada@example.test',
             'recovery uses SMTP and gives uniform public responses');
+        check(array_diff(capturedMessages(), $before) === [],
+            'unknown recovery addresses send no mail');
         $recoveryBody = quoted_printable_decode($knownMail['body']);
         if (!preg_match('~https?://[^"\s<>]+/auth/reset_password/[^"\s<>]+~', $recoveryBody, $match)) {
             throw new RuntimeException('Recovery link absent from captured mail');
