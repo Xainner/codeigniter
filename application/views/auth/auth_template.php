@@ -11,12 +11,12 @@
         $config = [
             'login' => [
                 'eyebrow' => 'Acceso',
-                'heading' => 'Iniciar sesion',
+                'heading' => 'Iniciar sesión',
                 'description' => 'Ingresa tus credenciales para continuar.',
                 'form_id' => 'loginForm',
                 'endpoint' => base_url('auth/login'),
-                'success_title' => 'Sesion iniciada',
-                'submit' => 'Iniciar sesion',
+                'success_title' => 'Sesión iniciada',
+                'submit' => 'Iniciar sesión',
                 'loading' => 'Validando...',
                 'ajax' => TRUE,
             ],
@@ -32,7 +32,7 @@
                 'ajax' => TRUE,
             ],
             'forgot_password' => [
-                'eyebrow' => 'Recuperacion',
+                'eyebrow' => 'Recuperación',
                 'heading' => 'Recuperar acceso',
                 'description' => 'Escribe tu dato de acceso y te enviaremos las instrucciones.',
                 'form_id' => 'forgotForm',
@@ -43,13 +43,13 @@
                 'ajax' => TRUE,
             ],
             'reset_password' => [
-                'eyebrow' => 'Nueva contrasena',
+                'eyebrow' => 'Nueva contraseña',
                 'heading' => 'Restablecer acceso',
-                'description' => 'Define una contrasena nueva para tu cuenta.',
+                'description' => 'Define una contraseña nueva para tu cuenta.',
                 'form_id' => 'resetPasswordForm',
                 'endpoint' => base_url('auth/reset_password/' . ($code ?? '')),
-                'success_title' => 'Contrasena actualizada',
-                'submit' => 'Actualizar contrasena',
+                'success_title' => 'Contraseña actualizada',
+                'submit' => 'Actualizar contraseña',
                 'loading' => 'Actualizando...',
                 'ajax' => FALSE,
             ],
@@ -68,7 +68,7 @@
 
         $view = $config[$auth_variant] ?? $config['login'];
         $identityType = (($type ?? 'email') !== 'email') ? 'text' : 'email';
-        $identityLabel = (($type ?? 'email') !== 'email') ? 'Usuario o correo' : 'Correo electronico';
+        $identityLabel = (($type ?? 'email') !== 'email') ? 'Usuario o correo' : 'Correo electrónico';
         $brandColor = (string) ($this->app_settings['brand_color'] ?? '#4f46e5');
         $brandColor = preg_match('/^#[0-9a-fA-F]{6}$/D', $brandColor) ? $brandColor : '#4f46e5';
         $siteName = (string) ($this->app_settings['site_name'] ?? 'CodeIgniter');
@@ -101,21 +101,21 @@
                             <input type="text" class="form-control" id="identity" name="identity" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('identity')); ?>" autocomplete="username" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="password">Contrasena</label>
-                            <input type="password" class="form-control" id="password" name="password" placeholder="Ingresa tu contrasena" autocomplete="current-password" required>
+                            <label class="form-label" for="password">Contraseña</label>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Ingresa tu contraseña" autocomplete="current-password" required>
                         </div>
                         <div class="form-options">
                             <?php if (!empty($this->app_settings['remember_users'])): ?><label class="form-check" for="remember">
                                 <input class="form-check-input" type="checkbox" id="remember" name="remember" value="1">
                                 <span class="form-check-label">Recordarme</span>
                             </label><?php endif; ?>
-                            <a href="<?php echo base_url('auth/forgot_password'); ?>">Olvide mi contrasena</a>
+                            <a href="<?php echo base_url('auth/forgot_password'); ?>">Olvidé mi contraseña</a>
                         </div>
                         <button type="submit" class="auth-button" data-submit-button data-loading-label="<?php echo html_escape($view['loading']); ?>"><?php echo html_escape($view['submit']); ?></button>
                     </form>
 
                     <?php if (!empty($this->app_settings['public_registration'])): ?><div class="auth-links">
-                        <span>No tienes cuenta? <a href="<?php echo base_url('auth/register'); ?>">Crear cuenta</a></span>
+                        <span>¿No tienes cuenta? <a href="<?php echo base_url('auth/register'); ?>">Crear cuenta</a></span>
                     </div><?php endif; ?>
                 <?php elseif ($auth_variant === 'register'): ?>
                     <form class="auth-form" id="registerForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
@@ -137,34 +137,34 @@
                             </div>
                         <?php endif; ?>
                         <div class="form-group">
-                            <label class="form-label" for="email">Correo electronico</label>
+                            <label class="form-label" for="email">Correo electrónico</label>
                             <input type="email" class="form-control" id="email" name="email" placeholder="tu@correo.com" value="<?php echo html_escape(set_value('email')); ?>" autocomplete="email" required>
                         </div>
                         <div class="form-grid">
                             <div class="form-group">
-                                <label class="form-label" for="company">Organizacion <span class="form-meta">opcional</span></label>
-                                <input type="text" class="form-control" id="company" name="company" placeholder="Nombre de organizacion" value="<?php echo html_escape(set_value('company')); ?>" autocomplete="organization">
+                                <label class="form-label" for="company">Organización <span class="form-meta">opcional</span></label>
+                                <input type="text" class="form-control" id="company" name="company" placeholder="Nombre de organización" value="<?php echo html_escape(set_value('company')); ?>" autocomplete="organization">
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="phone">Telefono <span class="form-meta">opcional</span></label>
-                                <input type="text" class="form-control" id="phone" name="phone" placeholder="Telefono" value="<?php echo html_escape(set_value('phone')); ?>" autocomplete="tel">
+                                <label class="form-label" for="phone">Teléfono <span class="form-meta">opcional</span></label>
+                                <input type="text" class="form-control" id="phone" name="phone" placeholder="Teléfono" value="<?php echo html_escape(set_value('phone')); ?>" autocomplete="tel">
                             </div>
                         </div>
                         <div class="form-grid">
                             <div class="form-group">
-                                <label class="form-label" for="password">Contrasena</label>
+                                <label class="form-label" for="password">Contraseña</label>
                                 <input type="password" class="form-control" id="password" name="password" placeholder="Mínimo <?php echo (int) ($this->app_settings['min_password_length'] ?? 12); ?> caracteres" minlength="<?php echo (int) ($this->app_settings['min_password_length'] ?? 12); ?>" autocomplete="new-password" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="password_confirm">Confirmar contrasena</label>
-                                <input type="password" class="form-control" id="password_confirm" name="password_confirm" placeholder="Repite la contrasena" autocomplete="new-password" required>
+                                <label class="form-label" for="password_confirm">Confirmar contraseña</label>
+                                <input type="password" class="form-control" id="password_confirm" name="password_confirm" placeholder="Repite la contraseña" autocomplete="new-password" required>
                             </div>
                         </div>
                         <button type="submit" class="auth-button" data-submit-button data-loading-label="<?php echo html_escape($view['loading']); ?>"><?php echo html_escape($view['submit']); ?></button>
                     </form>
 
                     <div class="auth-links">
-                        <span>Ya tienes cuenta? <a href="<?php echo base_url('auth/login'); ?>">Iniciar sesion</a></span>
+                        <span>¿Ya tienes cuenta? <a href="<?php echo base_url('auth/login'); ?>">Iniciar sesión</a></span>
                     </div>
                 <?php elseif ($auth_variant === 'forgot_password'): ?>
                     <form class="auth-form" id="forgotForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
@@ -177,7 +177,7 @@
                     </form>
 
                     <div class="auth-links">
-                        <a href="<?php echo base_url('auth/login'); ?>">Volver a iniciar sesion</a>
+                        <a href="<?php echo base_url('auth/login'); ?>">Volver a iniciar sesión</a>
                     </div>
                 <?php elseif ($auth_variant === 'reset_password'): ?>
                     <form class="auth-form" id="resetPasswordForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="false">
@@ -185,11 +185,11 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label class="form-label" for="new_password"><?php echo sprintf(lang('reset_password_new_password_label'), $min_password_length); ?></label>
-                                <input type="password" class="form-control" id="new_password" name="new" placeholder="Nueva contrasena" autocomplete="new-password" pattern="<?php echo html_escape('^.{' . $min_password_length . '}.*$'); ?>" required>
+                                <input type="password" class="form-control" id="new_password" name="new" placeholder="Nueva contraseña" autocomplete="new-password" pattern="<?php echo html_escape('^.{' . $min_password_length . '}.*$'); ?>" required>
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="new_password_confirm"><?php echo lang('reset_password_new_password_confirm_label'); ?></label>
-                                <input type="password" class="form-control" id="new_password_confirm" name="new_confirm" placeholder="Repite la contrasena" autocomplete="new-password" pattern="<?php echo html_escape('^.{' . $min_password_length . '}.*$'); ?>" required>
+                                <input type="password" class="form-control" id="new_password_confirm" name="new_confirm" placeholder="Repite la contraseña" autocomplete="new-password" pattern="<?php echo html_escape('^.{' . $min_password_length . '}.*$'); ?>" required>
                             </div>
                         </div>
                         <input type="hidden" name="user_id" value="<?php echo html_escape($user_id['value'] ?? ''); ?>">
@@ -202,7 +202,7 @@
                     </form>
 
                     <div class="auth-links">
-                        <a href="<?php echo base_url('auth/login'); ?>">Volver a iniciar sesion</a>
+                        <a href="<?php echo base_url('auth/login'); ?>">Volver a iniciar sesión</a>
                     </div>
                 <?php elseif ($auth_variant === 'change_password'): ?>
                     <form class="auth-form" id="changePasswordForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="false">
