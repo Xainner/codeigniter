@@ -128,7 +128,8 @@ try {
     $login = http('GET', '/auth/login');
     check($login['status'] === 200, 'login page opens');
     check(str_contains($login['headers'], 'X-Frame-Options: DENY')
-        && str_contains($login['headers'], 'X-Content-Type-Options: nosniff'),
+        && str_contains($login['headers'], 'X-Content-Type-Options: nosniff')
+        && str_contains($login['headers'], "Content-Security-Policy: default-src 'self'; script-src 'self';"),
         'application responses include security headers');
     $badLogin = http('POST', '/auth/login', csrf($login['body']) + [
         'identity' => 'ada@example.test', 'password' => 'NotThePassword123!',
