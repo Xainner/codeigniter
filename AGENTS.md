@@ -19,6 +19,8 @@ php -S localhost:8000 -t public public/router.php
 ```
 
 1. Set `APP_KEY` (64 hexadecimal characters), `APP_URL`, `CI_ENV`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASS` in the PHP process environment. `APP_KEY` is required even in development.
+   Optional: `TRUSTED_PROXIES` (comma-separated proxy IPs/CIDRs in front of PHP) and `LOG_THRESHOLD`
+   (defaults to `1`, errors only; `0` disables logging).
 2. Import `database/database.sql` into an empty database. Set a random `APP_SETUP_TOKEN` of at least 32 characters, then create the first administrator at `/auth/setup`. The wizard permanently closes after completion.
 3. Configure and test SMTP from `/auth/settings`. Public registration starts disabled.
 
@@ -29,20 +31,23 @@ Useful URLs: `/auth`, `/auth/settings`, `/auth/login`, `/auth/setup`, `/auth/reg
 ```
 application/
   controllers/   Auth, Setup, Admin_users, Admin_groups, Admin_settings, Brand, Api, Welcome
-  models/        App_settings_model, Admin_user_model, Rate_limiter_model
+  models/        App_settings_model, Admin_user_model, Admin_audit_model, Rate_limiter_model
   libraries/     MY_Email (PHPMailer transport for CI_Email)
-  core/          MY_Exceptions keeps HTML error escaping outside vendor/
+  core/          MY_Controller (settings, load_auth(), shared auth helpers), MY_Exceptions (HTML error escaping)
   config/        database.php, email.php, rest.php, routes.php, config.php (subclass_prefix)
   views/         auth/, dashboard/, errors/, welcome_message.php
-  language/      english/ and spanish/ packs for auth, ion_auth, rest (default language: english)
+  language/      english/ and spanish/ packs for auth, ion_auth, rest; spanish/ also carries the CI3
+                 system translations (default language: spanish)
   third_party/   ion_auth (library + model + its own config/ion_auth.php)
 database/        database.sql (full base schema) + upgrade_*.sql migrations
 public/          web document root, index.php, router.php, assets/, .htaccess
 vendor/          Composer packages, including PocketArc system/ (ignored by Git)
 ```
 
-Conventions: controllers fill `$this->data` (title, message, per-field input arrays) and render through
-`_render_page()`. REST endpoints are controller methods named `<resource>_<verb>` (e.g. `ping_get`).
+Conventions: controllers that need authentication extend `MY_Controller` and call `$this->load_auth()`
+instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
+`register_active_user()` from `MY_Controller` rather than re-implementing them. `Auth` fills
+`$this->data` (title, message, per-field input arrays) and renders through `_render_page()`. REST endpoints are controller methods named `<resource>_<verb>` (e.g. `ping_get`).
 
 ## Git workflow
 
@@ -109,10 +114,18 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
 - Keep CSRF enabled (`csrf_protection = TRUE`) with the token present in every POST form,
   including auth AJAX.
 - Auth views add a second layer: a session-based CSRF nonce
-    (`_get_csrf_nonce()` / `_valid_csrf_nonce()` in `Auth.php`). Keep both in place.
+    (`_get_csrf_nonce()` / `_valid_csrf_nonce()` in `MY_Controller`). Keep both in place.
 - Cookies: `httponly` + `samesite=Lax`; do not weaken without review.
 - `MY_Controller` sets IonAuth's `recheck_timer` to one second so deactivated users lose
   existing sessions promptly. Keep a two-session integration test when changing this behavior.
+- `load_auth()` binds every session to an HMAC of the password hash through IonAuth hooks, so any
+  password change ends the user's other sessions. Changing one's own email or password requires the
+  current password. IonAuth's `logout()` does not revoke the remember-me token; use
+  `revoke_remember_token()` alongside it.
+- Account and group administration is recorded in `admin_audit` (field names and ids only, never
+  personal values or secrets); settings changes go to `settings_audit`.
+- `public/index.php` sends a Content-Security-Policy with `script-src 'self'`: keep JavaScript in
+  `public/assets/` and never add inline scripts or event handler attributes.
 - Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing.
 - Production: `display_errors = 0` (`public/index.php` switches error display by `ENVIRONMENT`).
 - Never log sensitive data (passwords, tokens, API keys).
@@ -133,10 +146,12 @@ Conventions: controllers fill `$this->data` (title, message, per-field input arr
 
 ## Gotchas
 
-- `MY_Controller` applies database settings to IonAuth before construction and enables CI email.
+- `MY_Controller::load_auth()` applies database settings to IonAuth before construction and enables CI email.
   SMTP is configured and verified in the dashboard; recovery reports unavailable until then.
 - Use `database/upgrade_auth_settings_20260923.sql` for existing databases. It marks setup complete
-  when users already exist, so existing installations cannot reopen the setup wizard.
+  when users already exist, so existing installations cannot reopen the setup wizard. Then apply
+  `database/upgrade_add_admin_audit_20261010.sql`.
 - IonAuth language packs live in `application/language/english|spanish`; the dashboard and setup copy
   is Spanish. Keep new dashboard text consistent and escape it in views.
-- The integration workflow runs on PHP 8.4 with MariaDB and measures dashboard query counts.
+- `.github/workflows/ci.yml` runs lint and the smoke suites on PHP 8.4/8.5/8.6 and the integration
+  suite on PHP 8.4 with MariaDB (including dashboard query counts).
