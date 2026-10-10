@@ -7,6 +7,7 @@ class Admin_users extends MY_Controller
         parent::__construct();
         $this->load_auth();
         $this->load->library('form_validation');
+        $this->load->model('Admin_audit_model');
         $this->load->helper(['url', 'form']);
     }
 
@@ -30,6 +31,10 @@ class Admin_users extends MY_Controller
                     'first_name' => $user->first_name, 'last_name' => $user->last_name,
                     'phone' => $user->phone, 'company' => $user->company,
                 ], $selected);
+                if ($id) {
+                    $id = $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'user.create', 'user', $id,
+                        ['groups' => $selected]) ? $id : FALSE;
+                }
                 if ($id && $this->db->trans_status()) {
                     $this->db->trans_commit();
                     $this->session->set_flashdata('message', 'Usuario creado.');
@@ -58,6 +63,7 @@ class Admin_users extends MY_Controller
         }
         $is_admin = $this->ion_auth->is_admin();
         $selected = array_map('intval', array_column($this->ion_auth->get_users_groups($id)->result_array(), 'id'));
+        $previous_groups = $selected;
         $errors = [];
         if ($this->input->method(TRUE) === 'POST') {
             if (!$this->_valid_csrf_nonce() || $id !== (int) $this->input->post('id')) {
@@ -97,14 +103,25 @@ class Admin_users extends MY_Controller
                     'company' => $posted->company,
                 ];
                 $password_changed = (string) $this->input->post('password') !== '';
+                $changed = array_keys(array_filter($data, static function ($value, $field) use ($user) {
+                    return (string) $value !== (string) $user->{$field};
+                }, ARRAY_FILTER_USE_BOTH));
                 if ($password_changed) {
                     $data['password'] = (string) $this->input->post('password');
+                    $changed[] = 'password';
+                }
+                $audit = ['fields' => $changed];
+                if ($is_admin && (array_diff($selected, $previous_groups) || array_diff($previous_groups, $selected))) {
+                    $audit['groups'] = $selected;
                 }
                 $this->load->model('Admin_user_model');
                 $this->db->trans_begin();
                 $updated = $this->ion_auth->update($id, $data);
                 if ($updated && $password_changed) {
                     $updated = $this->Admin_user_model->clear_credential_tokens($id);
+                }
+                if ($updated && ($changed || isset($audit['groups']))) {
+                    $updated = $this->Admin_audit_model->record($current->id, 'user.update', 'user', $id, $audit);
                 }
                 if ($updated && $is_admin) {
                     $updated = $this->ion_auth->remove_from_group('', $id);
@@ -139,7 +156,9 @@ class Admin_users extends MY_Controller
             show_404();
             return;
         }
-        $this->ion_auth->activate((int) $id);
+        if ($this->ion_auth->activate((int) $id)) {
+            $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'user.activate', 'user', $id);
+        }
         $this->session->set_flashdata('message', 'Usuario activado.');
         redirect('auth');
     }
@@ -159,7 +178,9 @@ class Admin_users extends MY_Controller
             show_error('No puedes desactivar tu cuenta ni al último administrador activo.', 403);
             return;
         }
-        $this->ion_auth->deactivate($id);
+        if ($this->ion_auth->deactivate($id)) {
+            $this->Admin_audit_model->record($current->id, 'user.deactivate', 'user', $id);
+        }
         $this->session->set_flashdata('message', 'Usuario desactivado.');
         redirect('auth');
     }

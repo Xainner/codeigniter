@@ -238,6 +238,10 @@ try {
     $membership = $conn->query('SELECT COUNT(*) AS total FROM users_groups WHERE user_id=' . $id)->fetch_assoc();
     check(redirected($edited) && $editedUser['last_name'] === 'Hopper Jr' && (int) $membership['total'] === 2,
         'admin edits user and group membership');
+    $audit = $conn->query("SELECT actor_user_id, details FROM admin_audit WHERE action='user.update' AND target_id=" . $id)->fetch_assoc();
+    $auditDetails = json_decode($audit['details'] ?? '{}', true);
+    check((int) ($audit['actor_user_id'] ?? 0) === 1 && $auditDetails['fields'] === ['last_name']
+        && $auditDetails['groups'] === [2, 3], 'user changes are audited without personal values');
     $adminCookieFile = $cookieFile;
     $memberCookieFile = tempnam(sys_get_temp_dir(), 'ci-member-cookie-');
     register_shutdown_function(static function () use ($memberCookieFile): void { @unlink($memberCookieFile); });
@@ -253,6 +257,8 @@ try {
     $nonce = hidden($page['body'], 'auth_nonce');
     check(redirected(http('POST', '/auth/deactivate/' . $id, csrf($page['body']) + ['auth_nonce' => $nonce])),
         'admin deactivates another user');
+    check((int) $conn->query("SELECT COUNT(*) AS total FROM admin_audit WHERE action='user.deactivate' AND target_id=" . $id)->fetch_assoc()['total'] === 1,
+        'deactivation is audited');
     sleep(2);
     $cookieFile = $memberCookieFile;
     check(http('GET', '/auth/edit_user/' . $id)['status'] === 403,
