@@ -80,7 +80,7 @@ class Auth extends MY_Controller
 		$is_ajax = $this->input->is_ajax_request();
 
 		// validate form input
-		$this->form_validation->set_rules('identity', str_replace(':', '', $this->lang->line('login_identity_label')), 'required');
+		$this->form_validation->set_rules('identity', str_replace(':', '', $this->lang->line('login_identity_label')), 'required|max_length[254]');
 		$this->form_validation->set_rules('password', str_replace(':', '', $this->lang->line('login_password_label')), 'required');
 
 		if ($this->form_validation->run() === TRUE)

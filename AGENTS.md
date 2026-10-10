@@ -150,7 +150,7 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
   SMTP is configured and verified in the dashboard; recovery reports unavailable until then.
 - Use `database/upgrade_auth_settings_20260923.sql` for existing databases. It marks setup complete
   when users already exist, so existing installations cannot reopen the setup wizard. Then apply
-  `database/upgrade_add_admin_audit_20261010.sql`.
+  `database/upgrade_add_admin_audit_20261010.sql` and `database/upgrade_widen_login_attempts_20261010.sql`.
 - IonAuth language packs live in `application/language/english|spanish`; the dashboard and setup copy
   is Spanish. Keep new dashboard text consistent and escape it in views.
 - `.github/workflows/ci.yml` runs lint and the smoke suites on PHP 8.4/8.5/8.6 and the integration

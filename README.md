@@ -44,7 +44,7 @@ El servidor de desarrollo solo sirve los tipos de archivo estatico permitidos de
 - `/auth/forgot_password`: recuperacion de contraseña.
 - `/api/ping`: devuelve unicamente `{"status":"ok"}` en JSON.
 
-Para actualizar una instalación previa, haz una copia de la base y ejecuta `database/upgrade_auth_settings_20260923.sql` y después `database/upgrade_add_admin_audit_20261010.sql`. Las migraciones conservan usuarios existentes y marcan el asistente como completado. Después cambia el document root a `public/`.
+Para actualizar una instalación previa, haz una copia de la base y ejecuta `database/upgrade_auth_settings_20260923.sql` y después `database/upgrade_add_admin_audit_20261010.sql` y `database/upgrade_widen_login_attempts_20261010.sql`. Las migraciones conservan usuarios existentes y marcan el asistente como completado. Después cambia el document root a `public/`.
 
 Las sesiones quedan ligadas a la contraseña con la que se iniciaron: cualquier cambio de contraseña cierra las demás sesiones de esa cuenta. Tras desplegar esta versión, las sesiones abiertas previamente deben iniciar sesión una vez más.
 

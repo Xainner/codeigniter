@@ -131,6 +131,13 @@ try {
         && str_contains($login['headers'], 'X-Content-Type-Options: nosniff')
         && str_contains($login['headers'], "Content-Security-Policy: default-src 'self'; script-src 'self';"),
         'application responses include security headers');
+    $longIdentity = str_repeat('a', 200) . '@example.test';
+    $longLogin = http('POST', '/auth/login', csrf($login['body']) + [
+        'identity' => $longIdentity, 'password' => 'NotThePassword123!',
+    ], true);
+    $tracked = db()->query("SELECT COUNT(*) AS total FROM login_attempts WHERE login='" . $longIdentity . "'")->fetch_assoc();
+    check($longLogin['status'] === 401 && (int) $tracked['total'] === 1,
+        'failed logins with long addresses are tracked for lockout');
     $badLogin = http('POST', '/auth/login', csrf($login['body']) + [
         'identity' => 'ada@example.test', 'password' => 'NotThePassword123!',
     ], true);
