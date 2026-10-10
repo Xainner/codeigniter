@@ -13,15 +13,20 @@ $read = static function ($row, $key, $default = '') {
     return is_object($row) ? ($row->{$key} ?? $default) : $default;
 };
 $user_id = (int) $read($user, 'id', 0);
+$own_account = !empty($own_account);
+$is_admin = !isset($is_admin) || $is_admin;
+$back_url = site_url($is_admin ? 'auth' : '/');
+$heading = $editing ? ($is_admin ? 'Editar usuario' : 'Mi perfil') : 'Crear usuario';
 $action = $editing ? site_url('auth/edit_user/' . $user_id) : site_url('auth/create_user');
 $this->load->view('dashboard/_header', [
-    'page_title' => $editing ? 'Editar usuario' : 'Crear usuario',
+    'page_title' => $heading,
     'active_nav' => 'users',
     'settings' => $settings ?? [],
+    'is_admin' => $is_admin,
 ]);
 ?>
 <div class="page-heading page-heading-narrow">
-    <div><a class="back-link" href="<?php echo html_escape(site_url('auth')); ?>"><span aria-hidden="true">←</span> Volver a usuarios</a><p class="eyebrow">Control de acceso</p><h1><?php echo $editing ? 'Editar usuario' : 'Crear usuario'; ?></h1><p class="page-description"><?php echo $editing ? 'Actualiza los datos y grupos de esta cuenta.' : 'Crea una cuenta y asígnale los grupos adecuados.'; ?></p></div>
+    <div><a class="back-link" href="<?php echo html_escape($back_url); ?>"><span aria-hidden="true">←</span> <?php echo $is_admin ? 'Volver a usuarios' : 'Volver al inicio'; ?></a><p class="eyebrow"><?php echo $is_admin ? 'Control de acceso' : 'Cuenta'; ?></p><h1><?php echo html_escape($heading); ?></h1><p class="page-description"><?php echo !$editing ? 'Crea una cuenta y asígnale los grupos adecuados.' : ($is_admin ? 'Actualiza los datos y grupos de esta cuenta.' : 'Actualiza tus datos de contacto y tu contraseña.'); ?></p></div>
 </div>
 <div class="form-container">
     <?php $this->load->view('dashboard/_feedback', ['errors' => $errors ?? [], 'message' => $message ?? '']); ?>
@@ -44,8 +49,12 @@ $this->load->view('dashboard/_header', [
             <div class="form-grid">
                 <div class="field"><label for="password">Contraseña<?php if (!$editing): ?> <span aria-hidden="true">*</span><?php endif; ?></label><input id="password" name="password" type="password" autocomplete="new-password" <?php echo $editing ? '' : 'required'; ?>></div>
                 <div class="field"><label for="password_confirm">Confirmar contraseña<?php if (!$editing): ?> <span aria-hidden="true">*</span><?php endif; ?></label><input id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" <?php echo $editing ? '' : 'required'; ?>></div>
+                <?php if ($own_account): ?>
+                <div class="field field-full"><label for="current_password">Contraseña actual</label><input id="current_password" name="current_password" type="password" autocomplete="current-password" aria-describedby="current-password-help"><small id="current-password-help">Obligatoria para cambiar tu correo o tu contraseña.</small></div>
+                <?php endif; ?>
             </div>
         </section>
+        <?php if ($is_admin): ?>
         <section class="form-section" aria-labelledby="user-groups-heading">
             <div class="section-heading"><span class="section-number">03</span><div><h2 id="user-groups-heading">Grupos</h2><p>Elige los grupos que determinan el acceso de esta cuenta.</p></div></div>
             <?php if ($groups === []): ?><p class="muted">Aún no hay grupos disponibles.</p><?php else: ?>
@@ -59,7 +68,8 @@ $this->load->view('dashboard/_header', [
             </div>
             <?php endif; ?>
         </section>
-        <div class="form-actions"><a class="button button-secondary" href="<?php echo html_escape(site_url('auth')); ?>">Cancelar</a><button class="button button-primary" type="submit"><?php echo $editing ? 'Guardar cambios' : 'Crear usuario'; ?></button></div>
+        <?php endif; ?>
+        <div class="form-actions"><a class="button button-secondary" href="<?php echo html_escape($back_url); ?>">Cancelar</a><button class="button button-primary" type="submit"><?php echo $editing ? 'Guardar cambios' : 'Crear usuario'; ?></button></div>
     </form>
 </div>
 <?php $this->load->view('dashboard/_footer'); ?>

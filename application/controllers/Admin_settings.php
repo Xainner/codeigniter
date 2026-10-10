@@ -5,7 +5,7 @@ class Admin_settings extends MY_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->library('ion_auth');
+        $this->load_auth();
         $this->load->helper(['url', 'form']);
     }
 
@@ -50,9 +50,7 @@ class Admin_settings extends MY_Controller
             'settings' => $this->App_settings_model->all(),
             'errors' => $errors,
             'message' => (string) $this->session->flashdata('message'),
-            'csrf_name' => $this->security->get_csrf_token_name(),
-            'csrf_hash' => $this->security->get_csrf_hash(),
-        ]);
+        ] + $this->csrf_data());
     }
 
     public function test_email()
@@ -68,17 +66,17 @@ class Admin_settings extends MY_Controller
             redirect('auth/settings');
             return;
         }
-        $this->load->library('email');
+        $admin = $this->ion_auth->user()->row();
         $email_config = $this->config->item('email_config', 'ion_auth');
         $this->email->clear(TRUE);
         $this->email->initialize($email_config);
         $this->email->from($settings['smtp_from_email'], $settings['smtp_from_name']);
-        $this->email->to($this->ion_auth->user()->row()->email);
+        $this->email->to($admin->email);
         $this->email->subject('Prueba de correo de ' . $settings['site_name']);
         $this->email->message('La configuración SMTP está funcionando.');
         if ($this->email->send()) {
             try {
-                $saved = $this->App_settings_model->save(['smtp_verified' => '1'], $this->ion_auth->user()->row()->id);
+                $saved = $this->App_settings_model->save(['smtp_verified' => '1'], $admin->id);
             } catch (Throwable $exception) {
                 $saved = FALSE;
             }
@@ -93,14 +91,6 @@ class Admin_settings extends MY_Controller
             $this->session->set_flashdata('message', 'No se pudo enviar el correo de prueba.');
         }
         redirect('auth/settings');
-    }
-
-    private function require_admin()
-    {
-        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            show_error('Acceso denegado', 403);
-            exit;
-        }
     }
 
     private function validated_input(array &$errors)

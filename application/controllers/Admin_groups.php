@@ -5,7 +5,9 @@ class Admin_groups extends MY_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->library(['ion_auth', 'form_validation']);
+        $this->load_auth();
+        $this->load->library('form_validation');
+        $this->load->model('Admin_audit_model');
         $this->load->helper(['url', 'form']);
     }
 
@@ -24,7 +26,9 @@ class Admin_groups extends MY_Controller
                 $errors[] = 'Ya existe un grupo con ese nombre.';
             }
             if (!$errors) {
-                if ($this->ion_auth->create_group($group->name, $group->description)) {
+                $group_id = $this->ion_auth->create_group($group->name, $group->description);
+                if ($group_id) {
+                    $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'group.create', 'group', $group_id);
                     $this->session->set_flashdata('message', 'Grupo creado.');
                     redirect('auth#groups');
                     return;
@@ -60,6 +64,8 @@ class Admin_groups extends MY_Controller
             }
             if (!$errors) {
                 if ($this->ion_auth->update_group($id, $posted->name, ['description' => $posted->description])) {
+                    $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'group.update', 'group', $id,
+                        ['fields' => array_keys(array_diff_assoc((array) $posted, ['name' => $group->name, 'description' => $group->description]))]);
                     $this->session->set_flashdata('message', 'Grupo actualizado.');
                     redirect('auth#groups');
                     return;
@@ -92,16 +98,6 @@ class Admin_groups extends MY_Controller
         $this->load->view('dashboard/group_form', [
             'mode' => $mode, 'group' => $group, 'errors' => $errors,
             'message' => '', 'settings' => $this->app_settings,
-            'csrf_name' => $this->security->get_csrf_token_name(),
-            'csrf_hash' => $this->security->get_csrf_hash(),
-        ]);
-    }
-
-    private function require_admin()
-    {
-        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            show_error('Acceso denegado', 403);
-            exit;
-        }
+        ] + $this->csrf_data());
     }
 }

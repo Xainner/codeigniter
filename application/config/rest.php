@@ -203,7 +203,8 @@ $config['auth_library_function'] = '';
 | Array of usernames and passwords for login, if ldap is configured this is ignored
 |
 */
-$config['rest_valid_logins'] = ['admin' => '1234'];
+// Never ship default credentials: add real logins only together with rest_auth.
+$config['rest_valid_logins'] = [];
 
 /*
 |--------------------------------------------------------------------------

@@ -79,6 +79,9 @@
 	header('X-Content-Type-Options: nosniff');
 	header('X-Frame-Options: DENY');
 	header('Referrer-Policy: strict-origin-when-cross-origin');
+	// Views load only same-origin scripts. Inline styles stay allowed for the
+	// configurable brand colour and the framework error pages.
+	header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
 	$composer_autoload = dirname(__DIR__).'/vendor/autoload.php';
 	if ( ! is_file($composer_autoload))
 	{

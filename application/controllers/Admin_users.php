@@ -5,7 +5,9 @@ class Admin_users extends MY_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->library(['ion_auth', 'form_validation']);
+        $this->load_auth();
+        $this->load->library('form_validation');
+        $this->load->model('Admin_audit_model');
         $this->load->helper(['url', 'form']);
     }
 
@@ -24,16 +26,15 @@ class Admin_users extends MY_Controller
             }
             if (!$errors) {
                 $email = strtolower(trim($user->email));
-                $ion = $this->config->item('ion_auth');
-                $original = $ion;
-                $ion['email_activation'] = FALSE;
-                $this->config->set_item('ion_auth', $ion);
                 $this->db->trans_begin();
-                $id = $this->ion_auth->register($email, (string) $this->input->post('password'), $email, [
+                $id = $this->register_active_user($email, (string) $this->input->post('password'), [
                     'first_name' => $user->first_name, 'last_name' => $user->last_name,
                     'phone' => $user->phone, 'company' => $user->company,
                 ], $selected);
-                $this->config->set_item('ion_auth', $original);
+                if ($id) {
+                    $id = $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'user.create', 'user', $id,
+                        ['groups' => $selected]) ? $id : FALSE;
+                }
                 if ($id && $this->db->trans_status()) {
                     $this->db->trans_commit();
                     $this->session->set_flashdata('message', 'Usuario creado.');
@@ -62,9 +63,10 @@ class Admin_users extends MY_Controller
         }
         $is_admin = $this->ion_auth->is_admin();
         $selected = array_map('intval', array_column($this->ion_auth->get_users_groups($id)->result_array(), 'id'));
+        $previous_groups = $selected;
         $errors = [];
         if ($this->input->method(TRUE) === 'POST') {
-            if (!$this->valid_nonce() || $id !== (int) $this->input->post('id')) {
+            if (!$this->_valid_csrf_nonce() || $id !== (int) $this->input->post('id')) {
                 show_error('Solicitud inválida', 403);
                 return;
             }
@@ -72,6 +74,17 @@ class Admin_users extends MY_Controller
             $this->validation_rules(FALSE, $id);
             if (!$this->form_validation->run()) {
                 $errors[] = strip_tags(validation_errors());
+            }
+            $credentials_changed = strtolower($posted->email) !== strtolower((string) $user->email)
+                || (string) $this->input->post('password') !== '';
+            if (!$errors && $credentials_changed && (int) $current->id === $id) {
+                // A borrowed session must not be enough to take over the account.
+                $this->load->model('Rate_limiter_model');
+                if (!$this->Rate_limiter_model->allow('reauth-user', (string) $id, 5, 900)) {
+                    $errors[] = 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.';
+                } elseif (!$this->ion_auth->verify_password((string) $this->input->post('current_password'), $user->password, $user->email)) {
+                    $errors[] = 'Escribe tu contraseña actual para cambiar el correo o la contraseña.';
+                }
             }
             if ($is_admin) {
                 $selected = $this->group_ids($errors);
@@ -89,11 +102,27 @@ class Admin_users extends MY_Controller
                     'email' => strtolower(trim($posted->email)), 'phone' => $posted->phone,
                     'company' => $posted->company,
                 ];
-                if ($this->input->post('password') !== '') {
+                $password_changed = (string) $this->input->post('password') !== '';
+                $changed = array_keys(array_filter($data, static function ($value, $field) use ($user) {
+                    return (string) $value !== (string) $user->{$field};
+                }, ARRAY_FILTER_USE_BOTH));
+                if ($password_changed) {
                     $data['password'] = (string) $this->input->post('password');
+                    $changed[] = 'password';
                 }
+                $audit = ['fields' => $changed];
+                if ($is_admin && (array_diff($selected, $previous_groups) || array_diff($previous_groups, $selected))) {
+                    $audit['groups'] = $selected;
+                }
+                $this->load->model('Admin_user_model');
                 $this->db->trans_begin();
                 $updated = $this->ion_auth->update($id, $data);
+                if ($updated && $password_changed) {
+                    $updated = $this->Admin_user_model->clear_credential_tokens($id);
+                }
+                if ($updated && ($changed || isset($audit['groups']))) {
+                    $updated = $this->Admin_audit_model->record($current->id, 'user.update', 'user', $id, $audit);
+                }
                 if ($updated && $is_admin) {
                     $updated = $this->ion_auth->remove_from_group('', $id);
                     foreach ($selected as $group_id) {
@@ -102,6 +131,10 @@ class Admin_users extends MY_Controller
                 }
                 if ($updated && $this->db->trans_status()) {
                     $this->db->trans_commit();
+                    if ($password_changed && (int) $current->id === $id) {
+                        // Other sessions end on their next request; keep this one.
+                        $this->_bind_session_password();
+                    }
                     $this->session->set_flashdata('message', 'Usuario actualizado.');
                     redirect($is_admin ? 'auth' : '/');
                     return;
@@ -111,7 +144,7 @@ class Admin_users extends MY_Controller
             }
             $user = (object) array_merge((array) $user, (array) $posted);
         }
-        $this->render_form('edit', $user, $selected, $errors, $is_admin);
+        $this->render_form('edit', $user, $selected, $errors, $is_admin, (int) $current->id === $id);
     }
 
     public function activate($id)
@@ -123,7 +156,9 @@ class Admin_users extends MY_Controller
             show_404();
             return;
         }
-        $this->ion_auth->activate((int) $id);
+        if ($this->ion_auth->activate((int) $id)) {
+            $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'user.activate', 'user', $id);
+        }
         $this->session->set_flashdata('message', 'Usuario activado.');
         redirect('auth');
     }
@@ -143,7 +178,9 @@ class Admin_users extends MY_Controller
             show_error('No puedes desactivar tu cuenta ni al último administrador activo.', 403);
             return;
         }
-        $this->ion_auth->deactivate($id);
+        if ($this->ion_auth->deactivate($id)) {
+            $this->Admin_audit_model->record($current->id, 'user.deactivate', 'user', $id);
+        }
         $this->session->set_flashdata('message', 'Usuario desactivado.');
         redirect('auth');
     }
@@ -208,48 +245,21 @@ class Admin_users extends MY_Controller
         return $ids;
     }
 
-    private function render_form($mode, $user, array $selected, array $errors, $is_admin = TRUE)
+    private function render_form($mode, $user, array $selected, array $errors, $is_admin = TRUE, $own_account = FALSE)
     {
-        $nonce = $this->nonce();
         $this->load->view('dashboard/user_form', [
-            'mode' => $mode, 'user' => $user,
+            'mode' => $mode, 'user' => $user, 'own_account' => $own_account, 'is_admin' => $is_admin,
             'groups' => $is_admin ? $this->ion_auth->groups()->result() : [],
             'selected_group_ids' => $selected,
             'errors' => $errors, 'message' => '', 'settings' => $this->app_settings,
-            'csrf_name' => $this->security->get_csrf_token_name(),
-            'csrf_hash' => $this->security->get_csrf_hash(),
-            'nonce_name' => $nonce['name'], 'nonce_hash' => $nonce['value'],
-        ]);
-    }
-
-    private function nonce()
-    {
-        $name = 'auth_nonce';
-        $value = bin2hex(random_bytes(20));
-        $this->session->set_flashdata('admin_nonce', $value);
-        return ['name' => $name, 'value' => $value];
-    }
-
-    private function valid_nonce()
-    {
-        $expected = $this->session->flashdata('admin_nonce');
-        $given = $this->input->post('auth_nonce');
-        return is_string($expected) && is_string($given) && hash_equals($expected, $given);
+            'nonce_name' => 'auth_nonce', 'nonce_hash' => $this->_get_csrf_nonce()['auth_nonce'],
+        ] + $this->csrf_data());
     }
 
     private function require_post_nonce()
     {
-        if ($this->input->method(TRUE) !== 'POST' || !$this->valid_nonce()) {
+        if ($this->input->method(TRUE) !== 'POST' || !$this->_valid_csrf_nonce()) {
             show_error('Solicitud inválida', 403);
-            exit;
-        }
-    }
-
-    private function require_admin()
-    {
-        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
-            show_error('Acceso denegado', 403);
-            exit;
         }
     }
 

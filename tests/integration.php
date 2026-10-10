@@ -128,8 +128,22 @@ try {
     $login = http('GET', '/auth/login');
     check($login['status'] === 200, 'login page opens');
     check(str_contains($login['headers'], 'X-Frame-Options: DENY')
-        && str_contains($login['headers'], 'X-Content-Type-Options: nosniff'),
+        && str_contains($login['headers'], 'X-Content-Type-Options: nosniff')
+        && str_contains($login['headers'], "Content-Security-Policy: default-src 'self'; script-src 'self';"),
         'application responses include security headers');
+    $longIdentity = str_repeat('a', 200) . '@example.test';
+    $longLogin = http('POST', '/auth/login', csrf($login['body']) + [
+        'identity' => $longIdentity, 'password' => 'NotThePassword123!',
+    ], true);
+    $tracked = db()->query("SELECT COUNT(*) AS total FROM login_attempts WHERE login='" . $longIdentity . "'")->fetch_assoc();
+    check($longLogin['status'] === 401 && (int) $tracked['total'] === 1,
+        'failed logins with long addresses are tracked for lockout');
+    $badLogin = http('POST', '/auth/login', csrf($login['body']) + [
+        'identity' => 'ada@example.test', 'password' => 'NotThePassword123!',
+    ], true);
+    check($badLogin['status'] === 401
+        && (json_decode($badLogin['body'], true)['message'] ?? '') === 'No se ha podido iniciar sesión',
+        'authentication messages use the Spanish language pack');
     $loginResult = http('POST', '/auth/login', csrf($login['body']) + [
         'identity' => 'ada@example.test', 'password' => 'VeryStrongPassword123!',
     ], true);
@@ -232,6 +246,10 @@ try {
     $membership = $conn->query('SELECT COUNT(*) AS total FROM users_groups WHERE user_id=' . $id)->fetch_assoc();
     check(redirected($edited) && $editedUser['last_name'] === 'Hopper Jr' && (int) $membership['total'] === 2,
         'admin edits user and group membership');
+    $audit = $conn->query("SELECT actor_user_id, details FROM admin_audit WHERE action='user.update' AND target_id=" . $id)->fetch_assoc();
+    $auditDetails = json_decode($audit['details'] ?? '{}', true);
+    check((int) ($audit['actor_user_id'] ?? 0) === 1 && $auditDetails['fields'] === ['last_name']
+        && $auditDetails['groups'] === [2, 3], 'user changes are audited without personal values');
     $adminCookieFile = $cookieFile;
     $memberCookieFile = tempnam(sys_get_temp_dir(), 'ci-member-cookie-');
     register_shutdown_function(static function () use ($memberCookieFile): void { @unlink($memberCookieFile); });
@@ -247,6 +265,8 @@ try {
     $nonce = hidden($page['body'], 'auth_nonce');
     check(redirected(http('POST', '/auth/deactivate/' . $id, csrf($page['body']) + ['auth_nonce' => $nonce])),
         'admin deactivates another user');
+    check((int) $conn->query("SELECT COUNT(*) AS total FROM admin_audit WHERE action='user.deactivate' AND target_id=" . $id)->fetch_assoc()['total'] === 1,
+        'deactivation is audited');
     sleep(2);
     $cookieFile = $memberCookieFile;
     check(http('GET', '/auth/edit_user/' . $id)['status'] === 403,
@@ -255,6 +275,59 @@ try {
     $page = http('GET', '/auth?q=grace');
     check(redirected(http('POST', '/auth/activate/' . $id, csrf($page['body']) + ['auth_nonce' => hidden($page['body'], 'auth_nonce')])),
         'admin reactivates user');
+    $cookieFile = $memberCookieFile;
+    $memberLogin = http('GET', '/auth/login');
+    http('POST', '/auth/login', csrf($memberLogin['body']) + [
+        'identity' => 'grace@example.test', 'password' => 'AnotherStrongPassword123!',
+    ], true);
+    check(http('GET', '/auth/edit_user/' . $id)['status'] === 200, 'reactivated member signs in again');
+    $cookieFile = $adminCookieFile;
+    $conn->query("UPDATE users SET remember_selector='stale-selector', remember_code='stale' WHERE id=" . $id);
+    $editForm = http('GET', '/auth/edit_user/' . $id);
+    $passwordReset = http('POST', '/auth/edit_user/' . $id, csrf($editForm['body']) + [
+        'auth_nonce' => hidden($editForm['body'], 'auth_nonce'), 'id' => (string) $id,
+        'first_name' => 'Grace', 'last_name' => 'Hopper Jr', 'email' => 'grace@example.test',
+        'phone' => '', 'company' => '', 'password' => 'ReplacedStrongPassword123!',
+        'password_confirm' => 'ReplacedStrongPassword123!', 'groups' => ['2', '3'],
+    ]);
+    $tokens = $conn->query('SELECT remember_selector FROM users WHERE id=' . $id)->fetch_assoc();
+    check(redirected($passwordReset) && $tokens['remember_selector'] === null,
+        'admin password change clears remember-me tokens');
+    $cookieFile = $memberCookieFile;
+    check(http('GET', '/auth/edit_user/' . $id)['status'] === 403,
+        'password change ends existing sessions of that user');
+    $memberLogin = http('GET', '/auth/login');
+    $relogin = http('POST', '/auth/login', csrf($memberLogin['body']) + [
+        'identity' => 'grace@example.test', 'password' => 'ReplacedStrongPassword123!',
+    ], true);
+    check($relogin['status'] === 200 && http('GET', '/auth/edit_user/' . $id)['status'] === 200,
+        'member signs in with the new password');
+    $selfForm = http('GET', '/auth/edit_user/' . $id);
+    check(str_contains($selfForm['body'], 'name="current_password"'), 'own profile asks for the current password');
+    check(str_contains($selfForm['body'], 'Mi perfil') && !str_contains($selfForm['body'], '/auth/settings')
+        && !str_contains($selfForm['body'], 'name="groups[]"'), 'member profile hides administration navigation');
+    $selfChange = [
+        'id' => (string) $id, 'first_name' => 'Grace', 'last_name' => 'Hopper Jr',
+        'email' => 'grace.hopper@example.test', 'phone' => '', 'company' => '',
+        'password' => '', 'password_confirm' => '', 'current_password' => 'WrongPassword123!',
+    ];
+    $rejected = http('POST', '/auth/edit_user/' . $id, csrf($selfForm['body'])
+        + ['auth_nonce' => hidden($selfForm['body'], 'auth_nonce')] + $selfChange);
+    $stillOld = $conn->query('SELECT email FROM users WHERE id=' . $id)->fetch_assoc();
+    check($rejected['status'] === 200 && str_contains($rejected['body'], 'contraseña actual')
+        && $stillOld['email'] === 'grace@example.test', 'own email change requires the current password');
+    $selfChange['current_password'] = 'ReplacedStrongPassword123!';
+    $selfChange['password'] = $selfChange['password_confirm'] = 'SelfChosenPassword123!';
+    $accepted = http('POST', '/auth/edit_user/' . $id, csrf($rejected['body'])
+        + ['auth_nonce' => hidden($rejected['body'], 'auth_nonce')] + $selfChange);
+    $changed = $conn->query('SELECT email, password FROM users WHERE id=' . $id)->fetch_assoc();
+    check(redirected($accepted) && $changed['email'] === 'grace.hopper@example.test'
+        && password_verify('SelfChosenPassword123!', $changed['password']),
+        'member changes own email and password after reauthentication');
+    check(http('GET', '/auth/edit_user/' . $id)['status'] === 200,
+        'the session that changed the password stays signed in');
+    $cookieFile = $adminCookieFile;
+    check(http('GET', '/auth')['status'] === 200, 'admin session survives changes to another account');
     $page = http('GET', '/auth?q=ada');
     check(http('POST', '/auth/deactivate/1', csrf($page['body']) + ['auth_nonce' => hidden($page['body'], 'auth_nonce')])['status'] === 403,
         'admin cannot deactivate own account');
@@ -343,11 +416,11 @@ try {
         $unknown = http('POST', '/auth/forgot_password', csrf($forgot['body']) + [
             'identity' => 'nobody@example.test',
         ], true);
-        $probeMail = newMessage($before);
         check($known['status'] === 200 && $known['body'] === $unknown['body']
-            && $knownMail['recipient'] === 'ada@example.test'
-            && $probeMail['recipient'] === 'noreply@example.test',
+            && $knownMail['recipient'] === 'ada@example.test',
             'recovery uses SMTP and gives uniform public responses');
+        check(array_diff(capturedMessages(), $before) === [],
+            'unknown recovery addresses send no mail');
         $recoveryBody = quoted_printable_decode($knownMail['body']);
         if (!preg_match('~https?://[^"\s<>]+/auth/reset_password/[^"\s<>]+~', $recoveryBody, $match)) {
             throw new RuntimeException('Recovery link absent from captured mail');
@@ -364,12 +437,21 @@ try {
         $adminHash = $conn->query("SELECT password FROM users WHERE email='ada@example.test'")->fetch_assoc()['password'];
         check(redirected($reset) && password_verify('RecoveredPassword123!', $adminHash),
             'recovery token changes the password');
+        check(http('GET', '/auth/settings')['status'] === 403, 'password recovery ends the previous admin session');
+        $login = http('GET', '/auth/login');
+        $again = http('POST', '/auth/login', csrf($login['body']) + [
+            'identity' => 'ada@example.test', 'password' => 'RecoveredPassword123!',
+        ], true);
+        check($again['status'] === 200, 'admin signs in with the recovered password');
     }
 
     check(http('GET', '/auth/logout')['status'] === 404, 'GET cannot log out');
     $page = http('GET', '/auth');
+    $conn->query("UPDATE users SET remember_selector='admin-selector', remember_code='admin' WHERE id=1");
     $logout = http('POST', '/auth/logout', csrf($page['body']));
     check(redirected($logout), 'logout uses POST (HTTP ' . $logout['status'] . ')');
+    $tokens = $conn->query('SELECT remember_selector FROM users WHERE id=1')->fetch_assoc();
+    check($tokens['remember_selector'] === null, 'logout revokes the remember-me token');
     $memberLogin = http('GET', '/auth/login');
     $memberResult = http('POST', '/auth/login', csrf($memberLogin['body']) + [
         'identity' => 'public@example.test', 'password' => 'PublicStrongPassword123!',
