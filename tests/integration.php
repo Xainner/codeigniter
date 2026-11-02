@@ -376,6 +376,9 @@ try {
         'member changes own email and password after reauthentication');
     check(http('GET', '/auth/edit_user/' . $id)['status'] === 200,
         'the session that changed the password stays signed in');
+    sleep(2);
+    check(http('GET', '/auth/edit_user/' . $id)['status'] === 200,
+        'the session survives the account recheck after changing its own email');
     $cookieFile = $adminCookieFile;
     check(http('GET', '/auth')['status'] === 200, 'admin session survives changes to another account');
     $page = http('GET', '/auth?q=ada');

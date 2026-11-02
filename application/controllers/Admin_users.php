@@ -140,6 +140,11 @@ class Admin_users extends MY_Controller
                 }
                 if ($updated && $this->db->trans_status()) {
                     $this->db->trans_commit();
+                    if ((int) $current->id === $id) {
+                        // Ion Auth rechecks sessions by the identity they stored, so
+                        // an email change would otherwise sign this session out.
+                        $this->session->set_userdata(['identity' => $data['email'], 'email' => $data['email']]);
+                    }
                     if ($password_changed && (int) $current->id === $id) {
                         // Other sessions end on their next request; keep this one.
                         $this->_bind_session_password();
