@@ -1,0 +1,19 @@
+parameters:
+    level: 5
+    paths:
+        - application/controllers
+        - application/core
+        - application/helpers
+        - application/hooks
+        - application/libraries
+        - application/models
+    bootstrapFiles:
+        - tests/phpstan/bootstrap.php
+    scanDirectories:
+        - vendor/pocketarc/codeigniter/system
+        - application/third_party/ion_auth
+    # CodeIgniter attaches libraries, models and the database as dynamic properties.
+    universalObjectCratesClasses:
+        - CI_Controller
+        - CI_Model
+        - CI_Loader
