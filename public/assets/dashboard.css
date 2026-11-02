@@ -91,7 +91,7 @@ h3 { margin-bottom: 7px; font-size: 15px; }
 .person strong { color: #23324c; font-weight: 750; }
 .person small { color: #8b9aab; font-size: 11px; }
 .tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
-.tag { padding: 4px 8px; border-radius: 6px; background: #edf2fa; color: #506886; font-size: 10px; font-weight: 700; }
+.tag { display: inline-block; padding: 4px 8px; border-radius: 6px; background: #edf2fa; color: #506886; font-size: 10px; font-weight: 700; line-height: 1.4; }
 .status { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 100px; font-size: 10px; font-weight: 750; white-space: nowrap; }
 .status-active { background: #eaf8f0; color: #2d8a58; }
 .status-inactive { background: #f2f4f7; color: #8290a1; }
@@ -163,6 +163,20 @@ input::placeholder { color: #9eabba; }
 .test-panel p { margin: 2px 0 0; color: var(--muted); font-size: 11px; }
 .test-email-form { display: flex; gap: 8px; width: min(100%, 430px); }
 .test-email-form input { min-width: 0; flex: 1; }
+
+.mfa-setup { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; }
+.mfa-setup p { margin: 0; color: var(--muted); font-size: 12px; }
+.qr-code { display: block; width: 220px; max-width: 100%; height: auto; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.secret-key, .recovery-codes code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; font-weight: 650; letter-spacing: .04em; }
+.secret-key { display: inline-block; margin-top: 8px; padding: 9px 12px; border-radius: 8px; background: var(--canvas); color: var(--ink); word-break: break-all; }
+.token-box { padding: 20px 24px; }
+.token-box code { display: block; padding: 12px 14px; border-radius: 8px; background: var(--canvas); color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; font-weight: 650; word-break: break-all; }
+.new-token { border-color: #b8dcce; }
+.page-description code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95em; }
+.stack-form + .stack-form { margin-top: 18px; }
+.stack-form > .form-section:last-child { border-bottom: 0; }
+.recovery-panel { background: #fffbf2; }
+.recovery-codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 18px; margin: 0; padding-left: 22px; color: var(--muted); }
 
 @media (max-width: 1020px) {
     .dashboard-shell { grid-template-columns: 210px minmax(0, 1fr); }

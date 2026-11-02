@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<ruleset name="Project">
+    <description>Consistency rules for the application code; .editorconfig asks for tab indentation.</description>
+
+    <file>application</file>
+    <file>public/index.php</file>
+    <file>public/router.php</file>
+    <file>tests</file>
+
+    <exclude-pattern>application/third_party/*</exclude-pattern>
+    <exclude-pattern>application/language/*</exclude-pattern>
+    <exclude-pattern>*/index.html</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="tab-width" value="4"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <rule ref="Generic.WhiteSpace.DisallowSpaceIndent"/>
+    <rule ref="Generic.Files.LineEndings">
+        <properties>
+            <property name="eolChar" value="\n"/>
+        </properties>
+    </rule>
+    <rule ref="Generic.Files.ByteOrderMark"/>
+    <rule ref="Generic.PHP.DisallowShortOpenTag"/>
+    <rule ref="Generic.PHP.DeprecatedFunctions"/>
+    <rule ref="Generic.PHP.ForbiddenFunctions">
+        <properties>
+            <property name="forbiddenFunctions" type="array">
+                <element key="var_dump" value="null"/>
+                <element key="print_r" value="null"/>
+                <element key="dd" value="null"/>
+            </property>
+        </properties>
+    </rule>
+    <rule ref="Squiz.WhiteSpace.SuperfluousWhitespace">
+        <properties>
+            <property name="ignoreBlankLines" value="true"/>
+        </properties>
+    </rule>
+</ruleset>

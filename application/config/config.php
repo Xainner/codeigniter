@@ -102,7 +102,7 @@ $config['charset'] = 'UTF-8';
 | setting this variable to TRUE (boolean).  See the user guide for details.
 |
 */
-$config['enable_hooks'] = FALSE;
+$config['enable_hooks'] = TRUE;
 
 /*
 |--------------------------------------------------------------------------
@@ -384,11 +384,14 @@ $config['encryption_key'] = getenv('APP_KEY');
 | except for 'cookie_prefix' and 'cookie_httponly', which are ignored here.
 |
 */
-$config['sess_driver'] = 'files';
+// Files suit a single server. With several application servers use "database"
+// (table ci_sessions) or "redis" (SESSION_SAVE_PATH such as tcp://10.0.0.5:6379).
+$config['sess_driver'] = getenv('SESSION_DRIVER') ?: 'files';
 $config['sess_cookie_name'] = 'ci_session';
 $config['sess_samesite'] = 'Lax';
 $config['sess_expiration'] = 7200;
-$config['sess_save_path'] = APPPATH.'cache';
+$config['sess_save_path'] = getenv('SESSION_SAVE_PATH')
+	?: ($config['sess_driver'] === 'database' ? 'ci_sessions' : ($config['sess_driver'] === 'files' ? APPPATH.'cache' : ''));
 $config['sess_match_ip'] = FALSE;
 $config['sess_time_to_update'] = 300;
 $config['sess_regenerate_destroy'] = FALSE;
@@ -412,7 +415,8 @@ $config['sess_regenerate_destroy'] = FALSE;
 $config['cookie_prefix']	= '';
 $config['cookie_domain']	= '';
 $config['cookie_path']		= '/';
-$config['cookie_secure']	= (ENVIRONMENT === 'production');
+// Any HTTPS deployment gets secure cookies, not only the production environment.
+$config['cookie_secure']	= ENVIRONMENT === 'production' || stripos((string) getenv('APP_URL'), 'https://') === 0;
 $config['cookie_httponly'] 	= TRUE;
 $config['cookie_samesite'] 	= 'Lax';
 
@@ -435,7 +439,9 @@ $config['csrf_token_name'] = 'csrf_test_name';
 $config['csrf_cookie_name'] = 'csrf_cookie_name';
 $config['csrf_expire'] = 7200;
 $config['csrf_regenerate'] = FALSE;
-$config['csrf_exclude_uris'] = array();
+// API requests authenticate with an X-API-Key header and never with the
+// session cookie (see application/core/Api_controller.php).
+$config['csrf_exclude_uris'] = array('api/.*');
 
 /*
 |--------------------------------------------------------------------------

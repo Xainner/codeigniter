@@ -1,4 +1,11 @@
--- Drop the join table first so this script can also rebuild an existing schema.
+-- Base schema for a new installation. It drops and recreates every table it
+-- defines, so importing it into an existing database deletes all its data.
+-- Upgrade existing databases with the upgrade_*.sql scripts instead.
+
+-- Drop the tables that reference users first so this script can also rebuild an existing schema.
+DROP TABLE IF EXISTS `api_keys`;
+DROP TABLE IF EXISTS `user_mfa_recovery_codes`;
+DROP TABLE IF EXISTS `user_mfa`;
 DROP TABLE IF EXISTS `users_groups`;
 DROP TABLE IF EXISTS `groups`;
 
@@ -132,4 +139,51 @@ CREATE TABLE `request_limits` (
   `expires_at` int unsigned NOT NULL,
   PRIMARY KEY (`key_hash`),
   KEY `idx_request_limits_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Two-factor authentication: one TOTP secret per user, sealed with Secret_box.
+CREATE TABLE `user_mfa` (
+  `user_id` int(11) unsigned NOT NULL,
+  `secret` varchar(255) NOT NULL,
+  `last_step` bigint unsigned NOT NULL DEFAULT 0,
+  `enabled_at` int unsigned NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_user_mfa_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `user_mfa_recovery_codes` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) unsigned NOT NULL,
+  `code_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `used_at` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uc_user_mfa_recovery_code` (`user_id`, `code_hash`),
+  CONSTRAINT `fk_user_mfa_recovery_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- REST API keys: only an HMAC of each key is stored; the last four characters help to tell them apart.
+CREATE TABLE `api_keys` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) unsigned NOT NULL,
+  `name` varchar(80) NOT NULL,
+  `token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `token_hint` char(4) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  `last_used_at` int unsigned DEFAULT NULL,
+  `revoked_at` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uc_api_keys_token_hash` (`token_hash`),
+  KEY `idx_api_keys_user` (`user_id`),
+  CONSTRAINT `fk_api_keys_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Used only with SESSION_DRIVER=database.
+DROP TABLE IF EXISTS `ci_sessions`;
+CREATE TABLE `ci_sessions` (
+  `id` varchar(128) NOT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `timestamp` int unsigned NOT NULL DEFAULT 0,
+  `data` blob NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ci_sessions_timestamp` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

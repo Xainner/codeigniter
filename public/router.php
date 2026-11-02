@@ -6,9 +6,9 @@ $extension = $file === false ? '' : strtolower(pathinfo($file, PATHINFO_EXTENSIO
 $public_prefix = __DIR__.DIRECTORY_SEPARATOR;
 
 if ($file !== false && strncmp($file, $public_prefix, strlen($public_prefix)) === 0
-    && is_file($file) && in_array($extension, array('css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'woff', 'woff2', 'ttf'), true))
+	&& is_file($file) && in_array($extension, array('css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'woff', 'woff2', 'ttf'), true))
 {
-    return false;
+	return false;
 }
 
 // PHP's built-in server may set SCRIPT_NAME to a dotted route segment

@@ -11,57 +11,58 @@ $page_title = (string) ($page_title ?? 'Administración');
 $active_nav = (string) ($active_nav ?? 'users');
 // Members reach this shell only for their own profile.
 $show_admin_nav = !isset($is_admin) || $is_admin;
-$home_url = site_url($show_admin_nav ? 'auth' : '/');
+$home_url = site_url($show_admin_nav ? 'auth' : 'auth/profile');
+$nav_link = static function ($key, $label, $icon, $url) use ($active_nav) {
+	$active = $active_nav === $key;
+	return '<a class="nav-link' . ($active ? ' is-active' : '') . '"' . ($active ? ' aria-current="page"' : '')
+		. ' href="' . html_escape($url) . '"><span class="nav-icon" aria-hidden="true">' . $icon . '</span>'
+		. html_escape($label) . '</a>';
+};
 ?>
 <!doctype html>
 <html lang="es">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
-    <title><?php echo html_escape($page_title . ' · ' . $site_name); ?></title>
-    <link rel="stylesheet" href="<?php echo html_escape(base_url('assets/dashboard.css')); ?>">
-    <script src="<?php echo html_escape(base_url('assets/dashboard.js')); ?>" defer></script>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="color-scheme" content="light">
+	<title><?php echo html_escape($page_title . ' · ' . $site_name); ?></title>
+	<link rel="icon" href="<?php echo html_escape(asset_url('favicon.ico')); ?>" sizes="16x16 32x32 48x48">
+	<link rel="stylesheet" href="<?php echo html_escape(asset_url('assets/dashboard.css')); ?>">
+	<script src="<?php echo html_escape(asset_url('assets/dashboard.js')); ?>" defer></script>
 </head>
 <body style="--primary: <?php echo html_escape($brand_color); ?>; --primary-dark: color-mix(in srgb, <?php echo html_escape($brand_color); ?>, #000 17%);">
 <a class="skip-link" href="#main-content">Saltar al contenido</a>
 <div class="dashboard-shell">
-    <aside class="sidebar" id="dashboard-sidebar" aria-label="Navegación principal">
-        <a class="brand" href="<?php echo html_escape($home_url); ?>" aria-label="<?php echo html_escape($site_name); ?>, inicio">
-            <span class="brand-mark" aria-hidden="true"><?php if ($brand_logo_url !== null): ?><img src="<?php echo html_escape($brand_logo_url); ?>" alt=""><?php else: ?>C<?php endif; ?></span>
-            <span class="brand-copy"><strong><?php echo html_escape($site_name); ?></strong><small><?php echo $show_admin_nav ? 'Panel de administración' : 'Mi cuenta'; ?></small></span>
-        </a>
-        <nav class="sidebar-nav" aria-label="Secciones">
-            <?php if ($show_admin_nav): ?>
-            <a class="nav-link<?php echo $active_nav === 'users' ? ' is-active' : ''; ?>" <?php echo $active_nav === 'users' ? 'aria-current="page"' : ''; ?> href="<?php echo html_escape(site_url('auth')); ?>">
-                <span class="nav-icon" aria-hidden="true">◫</span>Usuarios
-            </a>
-            <a class="nav-link<?php echo $active_nav === 'groups' ? ' is-active' : ''; ?>" <?php echo $active_nav === 'groups' ? 'aria-current="page"' : ''; ?> href="<?php echo html_escape(site_url('auth') . '#groups'); ?>">
-                <span class="nav-icon" aria-hidden="true">◇</span>Grupos
-            </a>
-            <a class="nav-link<?php echo $active_nav === 'settings' ? ' is-active' : ''; ?>" <?php echo $active_nav === 'settings' ? 'aria-current="page"' : ''; ?> href="<?php echo html_escape(site_url('auth/settings')); ?>">
-                <span class="nav-icon" aria-hidden="true">⚙</span>Configuración
-            </a>
-            <?php else: ?>
-            <a class="nav-link is-active" aria-current="page" href="<?php echo html_escape(current_url()); ?>">
-                <span class="nav-icon" aria-hidden="true">◫</span>Mi perfil
-            </a>
-            <?php endif; ?>
-        </nav>
-        <div class="sidebar-foot">
-            <span class="sidebar-foot-label"><?php echo $show_admin_nav ? 'Administración' : 'Cuenta'; ?></span>
-            <form method="post" action="<?php echo html_escape(site_url('auth/logout')); ?>">
-                <input type="hidden" name="<?php echo html_escape($this->security->get_csrf_token_name()); ?>" value="<?php echo html_escape($this->security->get_csrf_hash()); ?>">
-                <button type="submit" class="sidebar-logout">Cerrar sesión <span aria-hidden="true">↗</span></button>
-            </form>
-        </div>
-    </aside>
-    <div class="workspace">
-        <header class="topbar">
-            <button class="menu-toggle" type="button" aria-controls="dashboard-sidebar" aria-expanded="false" aria-label="Abrir navegación" data-menu-toggle>
-                <span aria-hidden="true">☰</span>
-            </button>
-            <div class="topbar-location"><span>Panel</span><span aria-hidden="true">/</span><strong><?php echo html_escape($page_title); ?></strong></div>
-            <span class="topbar-site"><?php echo html_escape($site_name); ?></span>
-        </header>
-        <main class="main-content" id="main-content" tabindex="-1">
+	<aside class="sidebar" id="dashboard-sidebar" aria-label="Navegación principal">
+		<a class="brand" href="<?php echo html_escape($home_url); ?>" aria-label="<?php echo html_escape($site_name); ?>, inicio">
+			<span class="brand-mark" aria-hidden="true"><?php if ($brand_logo_url !== null): ?><img src="<?php echo html_escape($brand_logo_url); ?>" alt=""><?php else: ?>C<?php endif; ?></span>
+			<span class="brand-copy"><strong><?php echo html_escape($site_name); ?></strong><small><?php echo $show_admin_nav ? 'Panel de administración' : 'Mi cuenta'; ?></small></span>
+		</a>
+		<nav class="sidebar-nav" aria-label="Secciones">
+			<?php if ($show_admin_nav): ?>
+			<?php echo $nav_link('users', 'Usuarios', '◫', site_url('auth')); ?>
+			<?php echo $nav_link('groups', 'Grupos', '◇', site_url('auth') . '#groups'); ?>
+			<?php echo $nav_link('audit', 'Auditoría', '☰', site_url('auth/audit')); ?>
+			<?php echo $nav_link('api_keys', 'API', '⌘', site_url('auth/api-keys')); ?>
+			<?php echo $nav_link('settings', 'Configuración', '⚙', site_url('auth/settings')); ?>
+			<?php endif; ?>
+			<?php echo $nav_link('profile', 'Mi perfil', '◉', site_url('auth/profile')); ?>
+			<?php echo $nav_link('security', 'Seguridad', '◈', site_url('auth/security')); ?>
+		</nav>
+		<div class="sidebar-foot">
+			<span class="sidebar-foot-label"><?php echo $show_admin_nav ? 'Administración' : 'Cuenta'; ?></span>
+			<form method="post" action="<?php echo html_escape(site_url('auth/logout')); ?>">
+				<input type="hidden" name="<?php echo html_escape($this->security->get_csrf_token_name()); ?>" value="<?php echo html_escape($this->security->get_csrf_hash()); ?>">
+				<button type="submit" class="sidebar-logout">Cerrar sesión <span aria-hidden="true">↗</span></button>
+			</form>
+		</div>
+	</aside>
+	<div class="workspace">
+		<header class="topbar">
+			<button class="menu-toggle" type="button" aria-controls="dashboard-sidebar" aria-expanded="false" aria-label="Abrir navegación" data-menu-toggle>
+				<span aria-hidden="true">☰</span>
+			</button>
+			<div class="topbar-location"><span>Panel</span><span aria-hidden="true">/</span><strong><?php echo html_escape($page_title); ?></strong></div>
+			<span class="topbar-site"><?php echo html_escape($site_name); ?></span>
+		</header>
+		<main class="main-content" id="main-content" tabindex="-1">

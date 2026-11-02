@@ -2,273 +2,311 @@
 
 class Admin_users extends MY_Controller
 {
-    public function __construct()
-    {
-        parent::__construct();
-        $this->load_auth();
-        $this->load->library('form_validation');
-        $this->load->model('Admin_audit_model');
-        $this->load->helper(['url', 'form']);
-    }
+	public function __construct()
+	{
+		parent::__construct();
+		$this->load_auth();
+		$this->load->library('form_validation');
+		$this->load->model(['Admin_audit_model', 'User_mfa_model']);
+		$this->load->helper(['url', 'form']);
+	}
 
-    public function create()
-    {
-        $this->require_admin();
-        $errors = [];
-        $user = NULL;
-        $selected = [];
-        if ($this->input->method(TRUE) === 'POST') {
-            $user = $this->posted_user();
-            $selected = $this->group_ids($errors);
-            $this->validation_rules(TRUE);
-            if (!$this->form_validation->run()) {
-                $errors[] = strip_tags(validation_errors());
-            }
-            if (!$errors) {
-                $email = strtolower(trim($user->email));
-                $this->db->trans_begin();
-                $id = $this->register_active_user($email, (string) $this->input->post('password'), [
-                    'first_name' => $user->first_name, 'last_name' => $user->last_name,
-                    'phone' => $user->phone, 'company' => $user->company,
-                ], $selected);
-                if ($id) {
-                    $id = $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'user.create', 'user', $id,
-                        ['groups' => $selected]) ? $id : FALSE;
-                }
-                if ($id && $this->db->trans_status()) {
-                    $this->db->trans_commit();
-                    $this->session->set_flashdata('message', 'Usuario creado.');
-                    redirect('auth');
-                    return;
-                }
-                $this->db->trans_rollback();
-                $errors[] = strip_tags($this->ion_auth->errors()) ?: 'No se pudo crear el usuario.';
-            }
-        }
-        $this->render_form('create', $user, $selected, $errors);
-    }
+	public function create()
+	{
+		$this->require_admin();
+		$errors = [];
+		$user = NULL;
+		$selected = [];
+		if ($this->input->method(TRUE) === 'POST') {
+			$user = $this->posted_user();
+			$selected = $this->group_ids($errors);
+			$this->validation_rules(TRUE);
+			if (!$this->form_validation->run()) {
+				$errors[] = strip_tags(validation_errors());
+			}
+			if (!$errors) {
+				$email = strtolower(trim($user->email));
+				$this->db->trans_begin();
+				$id = $this->register_active_user($email, (string) $this->input->post('password'), [
+					'first_name' => $user->first_name, 'last_name' => $user->last_name,
+					'phone' => $user->phone, 'company' => $user->company,
+				], $selected);
+				if ($id) {
+					$id = $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'user.create', 'user', $id,
+						['groups' => $selected]) ? $id : FALSE;
+				}
+				if ($id && $this->db->trans_status()) {
+					$this->db->trans_commit();
+					$this->session->set_flashdata('message', 'Usuario creado.');
+					redirect('auth');
+					return;
+				}
+				$this->db->trans_rollback();
+				$errors[] = strip_tags($this->ion_auth->errors()) ?: 'No se pudo crear el usuario.';
+			}
+		}
+		$this->render_form('create', $user, $selected, $errors);
+	}
 
-    public function edit($id)
-    {
-        $id = (int) $id;
-        $current = $this->ion_auth->user()->row();
-        if (!$this->ion_auth->logged_in() || !$current || (!$this->ion_auth->is_admin() && (int) $current->id !== $id)) {
-            show_error('Acceso denegado', 403);
-            return;
-        }
-        $user = $this->ion_auth->user($id)->row();
-        if (!$user) {
-            show_404();
-            return;
-        }
-        $is_admin = $this->ion_auth->is_admin();
-        $selected = array_map('intval', array_column($this->ion_auth->get_users_groups($id)->result_array(), 'id'));
-        $previous_groups = $selected;
-        $errors = [];
-        if ($this->input->method(TRUE) === 'POST') {
-            if (!$this->_valid_csrf_nonce() || $id !== (int) $this->input->post('id')) {
-                show_error('Solicitud inválida', 403);
-                return;
-            }
-            $posted = $this->posted_user();
-            $this->validation_rules(FALSE, $id);
-            if (!$this->form_validation->run()) {
-                $errors[] = strip_tags(validation_errors());
-            }
-            $credentials_changed = strtolower($posted->email) !== strtolower((string) $user->email)
-                || (string) $this->input->post('password') !== '';
-            if (!$errors && $credentials_changed && (int) $current->id === $id) {
-                // A borrowed session must not be enough to take over the account.
-                $this->load->model('Rate_limiter_model');
-                if (!$this->Rate_limiter_model->allow('reauth-user', (string) $id, 5, 900)) {
-                    $errors[] = 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.';
-                } elseif (!$this->ion_auth->verify_password((string) $this->input->post('current_password'), $user->password, $user->email)) {
-                    $errors[] = 'Escribe tu contraseña actual para cambiar el correo o la contraseña.';
-                }
-            }
-            if ($is_admin) {
-                $selected = $this->group_ids($errors);
-                $admin_group = $this->db->get_where('groups', ['name' => 'admin'])->row();
-                $had_admin = $admin_group && in_array((int) $admin_group->id,
-                    array_map('intval', array_column($this->ion_auth->get_users_groups($id)->result_array(), 'id')), TRUE);
-                if ($had_admin && !in_array((int) $admin_group->id, $selected, TRUE)
-                    && ((int) $current->id === $id || $this->active_admin_count() <= 1)) {
-                    $errors[] = 'No puedes retirar el último administrador activo ni tu propio acceso administrativo.';
-                }
-            }
-            if (!$errors) {
-                $data = [
-                    'first_name' => $posted->first_name, 'last_name' => $posted->last_name,
-                    'email' => strtolower(trim($posted->email)), 'phone' => $posted->phone,
-                    'company' => $posted->company,
-                ];
-                $password_changed = (string) $this->input->post('password') !== '';
-                $changed = array_keys(array_filter($data, static function ($value, $field) use ($user) {
-                    return (string) $value !== (string) $user->{$field};
-                }, ARRAY_FILTER_USE_BOTH));
-                if ($password_changed) {
-                    $data['password'] = (string) $this->input->post('password');
-                    $changed[] = 'password';
-                }
-                $audit = ['fields' => $changed];
-                if ($is_admin && (array_diff($selected, $previous_groups) || array_diff($previous_groups, $selected))) {
-                    $audit['groups'] = $selected;
-                }
-                $this->load->model('Admin_user_model');
-                $this->db->trans_begin();
-                $updated = $this->ion_auth->update($id, $data);
-                if ($updated && $password_changed) {
-                    $updated = $this->Admin_user_model->clear_credential_tokens($id);
-                }
-                if ($updated && ($changed || isset($audit['groups']))) {
-                    $updated = $this->Admin_audit_model->record($current->id, 'user.update', 'user', $id, $audit);
-                }
-                if ($updated && $is_admin) {
-                    $updated = $this->ion_auth->remove_from_group('', $id);
-                    foreach ($selected as $group_id) {
-                        $updated = $this->ion_auth->add_to_group($group_id, $id) && $updated;
-                    }
-                }
-                if ($updated && $this->db->trans_status()) {
-                    $this->db->trans_commit();
-                    if ($password_changed && (int) $current->id === $id) {
-                        // Other sessions end on their next request; keep this one.
-                        $this->_bind_session_password();
-                    }
-                    $this->session->set_flashdata('message', 'Usuario actualizado.');
-                    redirect($is_admin ? 'auth' : '/');
-                    return;
-                }
-                $this->db->trans_rollback();
-                $errors[] = strip_tags($this->ion_auth->errors()) ?: 'No se pudo actualizar el usuario.';
-            }
-            $user = (object) array_merge((array) $user, (array) $posted);
-        }
-        $this->render_form('edit', $user, $selected, $errors, $is_admin, (int) $current->id === $id);
-    }
+	/** The signed-in user's own profile, for members and administrators alike. */
+	public function profile()
+	{
+		$this->require_login();
+		$this->edit((int) $this->ion_auth->get_user_id());
+	}
 
-    public function activate($id)
-    {
-        $this->require_admin();
-        $this->require_post_nonce();
-        $user = $this->ion_auth->user((int) $id)->row();
-        if (!$user) {
-            show_404();
-            return;
-        }
-        if ($this->ion_auth->activate((int) $id)) {
-            $this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'user.activate', 'user', $id);
-        }
-        $this->session->set_flashdata('message', 'Usuario activado.');
-        redirect('auth');
-    }
+	public function edit($id)
+	{
+		$id = (int) $id;
+		// logged_in() may sign a remembered user in, so it must run before user().
+		$this->require_login();
+		$current = $this->ion_auth->user()->row();
+		if (!$current || (!$this->ion_auth->is_admin() && (int) $current->id !== $id)) {
+			show_error('Acceso denegado', 403);
+			return;
+		}
+		$user = $this->ion_auth->user($id)->row();
+		if (!$user) {
+			show_404();
+			return;
+		}
+		$is_admin = $this->ion_auth->is_admin();
+		$selected = array_map('intval', array_column($this->ion_auth->get_users_groups($id)->result_array(), 'id'));
+		$previous_groups = $selected;
+		$errors = [];
+		if ($this->input->method(TRUE) === 'POST') {
+			if (!$this->_valid_csrf_nonce() || $id !== (int) $this->input->post('id')) {
+				show_error('Solicitud inválida', 403);
+				return;
+			}
+			$posted = $this->posted_user();
+			$this->validation_rules(FALSE, $id);
+			if (!$this->form_validation->run()) {
+				$errors[] = strip_tags(validation_errors());
+			}
+			$credentials_changed = strtolower($posted->email) !== strtolower((string) $user->email)
+				|| (string) $this->input->post('password') !== '';
+			if (!$errors && $credentials_changed && (int) $current->id === $id) {
+				// A borrowed session must not be enough to take over the account.
+				$this->load->model('Rate_limiter_model');
+				if (!$this->Rate_limiter_model->allow('reauth-user', (string) $id, 5, 900)) {
+					$errors[] = 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.';
+				} elseif (!$this->ion_auth->verify_password((string) $this->input->post('current_password'), $user->password, $user->email)) {
+					$errors[] = 'Escribe tu contraseña actual para cambiar el correo o la contraseña.';
+				}
+			}
+			if ($is_admin) {
+				$selected = $this->group_ids($errors);
+				$admin_group = $this->db->get_where('groups', ['name' => 'admin'])->row();
+				$had_admin = $admin_group && in_array((int) $admin_group->id,
+					array_map('intval', array_column($this->ion_auth->get_users_groups($id)->result_array(), 'id')), TRUE);
+				if ($had_admin && !in_array((int) $admin_group->id, $selected, TRUE)
+					&& ((int) $current->id === $id || $this->active_admin_count() <= 1)) {
+					$errors[] = 'No puedes retirar el último administrador activo ni tu propio acceso administrativo.';
+				}
+			}
+			if (!$errors) {
+				$data = [
+					'first_name' => $posted->first_name, 'last_name' => $posted->last_name,
+					'email' => strtolower(trim($posted->email)), 'phone' => $posted->phone,
+					'company' => $posted->company,
+				];
+				$password_changed = (string) $this->input->post('password') !== '';
+				$changed = array_keys(array_filter($data, static function ($value, $field) use ($user) {
+					return (string) $value !== (string) $user->{$field};
+				}, ARRAY_FILTER_USE_BOTH));
+				if ($password_changed) {
+					$data['password'] = (string) $this->input->post('password');
+					$changed[] = 'password';
+				}
+				$audit = ['fields' => $changed];
+				if ($is_admin && (array_diff($selected, $previous_groups) || array_diff($previous_groups, $selected))) {
+					$audit['groups'] = $selected;
+				}
+				$this->load->model('Admin_user_model');
+				$this->db->trans_begin();
+				$updated = $this->ion_auth->update($id, $data);
+				if ($updated && $password_changed) {
+					$updated = $this->Admin_user_model->clear_credential_tokens($id);
+				}
+				if ($updated && ($changed || isset($audit['groups']))) {
+					$updated = $this->Admin_audit_model->record($current->id, 'user.update', 'user', $id, $audit);
+				}
+				if ($updated && $is_admin) {
+					$updated = $this->ion_auth->remove_from_group('', $id);
+					foreach ($selected as $group_id) {
+						$updated = $this->ion_auth->add_to_group($group_id, $id) && $updated;
+					}
+				}
+				if ($updated && $this->db->trans_status()) {
+					$this->db->trans_commit();
+					if ((int) $current->id === $id) {
+						// Ion Auth rechecks sessions by the identity they stored, so
+						// an email change would otherwise sign this session out.
+						$this->session->set_userdata(['identity' => $data['email'], 'email' => $data['email']]);
+					}
+					if ($password_changed && (int) $current->id === $id) {
+						// Other sessions end on their next request; keep this one.
+						$this->_bind_session_password();
+					}
+					$this->session->set_flashdata('message', 'Usuario actualizado.');
+					redirect($is_admin ? 'auth' : 'auth/profile');
+					return;
+				}
+				$this->db->trans_rollback();
+				$errors[] = strip_tags($this->ion_auth->errors()) ?: 'No se pudo actualizar el usuario.';
+			}
+			$user = (object) array_merge((array) $user, (array) $posted);
+		}
+		$this->render_form('edit', $user, $selected, $errors, $is_admin, (int) $current->id === $id);
+	}
 
-    public function deactivate($id)
-    {
-        $this->require_admin();
-        $this->require_post_nonce();
-        $id = (int) $id;
-        $user = $this->ion_auth->user($id)->row();
-        if (!$user) {
-            show_404();
-            return;
-        }
-        $current = $this->ion_auth->user()->row();
-        if ((int) $current->id === $id || ($this->ion_auth->in_group('admin', $id) && $this->active_admin_count() <= 1)) {
-            show_error('No puedes desactivar tu cuenta ni al último administrador activo.', 403);
-            return;
-        }
-        if ($this->ion_auth->deactivate($id)) {
-            $this->Admin_audit_model->record($current->id, 'user.deactivate', 'user', $id);
-        }
-        $this->session->set_flashdata('message', 'Usuario desactivado.');
-        redirect('auth');
-    }
+	public function activate($id)
+	{
+		$this->require_admin();
+		$this->require_post_nonce();
+		$user = $this->ion_auth->user((int) $id)->row();
+		if (!$user) {
+			show_404();
+			return;
+		}
+		if ($this->ion_auth->activate((int) $id)) {
+			$this->Admin_audit_model->record($this->ion_auth->get_user_id(), 'user.activate', 'user', $id);
+		}
+		$this->session->set_flashdata('message', 'Usuario activado.');
+		redirect('auth');
+	}
 
-    private function validation_rules($creating, $id = 0)
-    {
-        $this->form_validation->set_rules('first_name', 'Nombre', 'trim|required|max_length[50]');
-        $this->form_validation->set_rules('last_name', 'Apellido', 'trim|required|max_length[50]');
-        $this->form_validation->set_rules('phone', 'Teléfono', 'trim|max_length[20]');
-        $this->form_validation->set_rules('company', 'Empresa', 'trim|max_length[100]');
-        $email = strtolower(trim((string) $this->input->post('email')));
-        $existing = $this->db->get_where('users', ['email' => $email])->row();
-        $email_rules = 'trim|required|valid_email|max_length[254]';
-        if ($existing && ($creating || (int) $existing->id !== $id)) {
-            $email_rules .= '|is_unique[users.email]';
-        }
-        $this->form_validation->set_rules('email', 'Correo', $email_rules);
-        $password = (string) $this->input->post('password');
-        if ($creating || $password !== '') {
-            $this->form_validation->set_rules('password', 'Contraseña', 'required|min_length['
-                . $this->app_settings['min_password_length'] . ']|matches[password_confirm]');
-            $this->form_validation->set_rules('password_confirm', 'Confirmación', 'required');
-        }
-    }
+	public function deactivate($id)
+	{
+		$this->require_admin();
+		$this->require_post_nonce();
+		$id = (int) $id;
+		$user = $this->ion_auth->user($id)->row();
+		if (!$user) {
+			show_404();
+			return;
+		}
+		$current = $this->ion_auth->user()->row();
+		if ((int) $current->id === $id || ($this->ion_auth->in_group('admin', $id) && $this->active_admin_count() <= 1)) {
+			show_error('No puedes desactivar tu cuenta ni al último administrador activo.', 403);
+			return;
+		}
+		if ($this->ion_auth->deactivate($id)) {
+			$this->Admin_audit_model->record($current->id, 'user.deactivate', 'user', $id);
+		}
+		$this->session->set_flashdata('message', 'Usuario desactivado.');
+		redirect('auth');
+	}
 
-    private function posted_user()
-    {
-        return (object) [
-            'first_name' => trim((string) $this->input->post('first_name')),
-            'last_name' => trim((string) $this->input->post('last_name')),
-            'email' => trim((string) $this->input->post('email')),
-            'phone' => trim((string) $this->input->post('phone')),
-            'company' => trim((string) $this->input->post('company')),
-        ];
-    }
+	/** Lets an administrator recover a user who lost their authenticator. */
+	public function reset_mfa($id)
+	{
+		$this->require_admin();
+		$this->require_post_nonce();
+		$id = (int) $id;
+		$actor = (int) $this->ion_auth->get_user_id();
+		if ($id === $actor) {
+			show_error('Gestiona tu propia verificación en dos pasos desde Seguridad.', 403);
+			return;
+		}
+		if (!$this->ion_auth->user($id)->row()) {
+			show_404();
+			return;
+		}
+		if ($this->User_mfa_model->enabled($id) && $this->User_mfa_model->disable($id)) {
+			$this->Admin_audit_model->record($actor, 'user.mfa_reset', 'user', $id);
+			$this->session->set_flashdata('message', 'Verificación en dos pasos restablecida. La persona podrá configurarla de nuevo.');
+		}
+		redirect('auth/edit_user/' . $id);
+	}
 
-    private function group_ids(array &$errors)
-    {
-        $posted = $this->input->post('groups');
-        if ($posted === NULL) {
-            return [];
-        }
-        if (!is_array($posted)) {
-            $errors[] = 'Selección de grupos inválida.';
-            return [];
-        }
-        $ids = [];
-        foreach ($posted as $value) {
-            if (!is_scalar($value) || !ctype_digit((string) $value)) {
-                $errors[] = 'Selección de grupos inválida.';
-                return [];
-            }
-            $ids[] = (int) $value;
-        }
-        $ids = array_values(array_unique($ids));
-        if ($ids) {
-            $valid = $this->db->where_in('id', $ids)->count_all_results('groups');
-            if ($valid !== count($ids)) {
-                $errors[] = 'Hay grupos desconocidos.';
-            }
-        }
-        return $ids;
-    }
+	private function validation_rules($creating, $id = 0)
+	{
+		$this->form_validation->set_rules('first_name', 'Nombre', 'trim|required|max_length[50]');
+		$this->form_validation->set_rules('last_name', 'Apellido', 'trim|required|max_length[50]');
+		$this->form_validation->set_rules('phone', 'Teléfono', 'trim|max_length[20]');
+		$this->form_validation->set_rules('company', 'Empresa', 'trim|max_length[100]');
+		$email = strtolower(trim((string) $this->input->post('email')));
+		$existing = $this->db->get_where('users', ['email' => $email])->row();
+		$email_rules = 'trim|required|valid_email|max_length[254]';
+		if ($existing && ($creating || (int) $existing->id !== $id)) {
+			$email_rules .= '|is_unique[users.email]';
+		}
+		$this->form_validation->set_rules('email', 'Correo', $email_rules);
+		$password = (string) $this->input->post('password');
+		if ($creating || $password !== '') {
+			$this->form_validation->set_rules('password', 'Contraseña', $this->new_password_rules(
+				$this->app_settings['min_password_length'], 'password_confirm', $this->input->post(['email', 'first_name', 'last_name', 'company'])));
+			$this->form_validation->set_rules('password_confirm', 'Confirmación', 'required');
+		}
+	}
 
-    private function render_form($mode, $user, array $selected, array $errors, $is_admin = TRUE, $own_account = FALSE)
-    {
-        $this->load->view('dashboard/user_form', [
-            'mode' => $mode, 'user' => $user, 'own_account' => $own_account, 'is_admin' => $is_admin,
-            'groups' => $is_admin ? $this->ion_auth->groups()->result() : [],
-            'selected_group_ids' => $selected,
-            'errors' => $errors, 'message' => '', 'settings' => $this->app_settings,
-            'nonce_name' => 'auth_nonce', 'nonce_hash' => $this->_get_csrf_nonce()['auth_nonce'],
-        ] + $this->csrf_data());
-    }
+	private function posted_user()
+	{
+		return (object) [
+			'first_name' => trim((string) $this->input->post('first_name')),
+			'last_name' => trim((string) $this->input->post('last_name')),
+			'email' => trim((string) $this->input->post('email')),
+			'phone' => trim((string) $this->input->post('phone')),
+			'company' => trim((string) $this->input->post('company')),
+		];
+	}
 
-    private function require_post_nonce()
-    {
-        if ($this->input->method(TRUE) !== 'POST' || !$this->_valid_csrf_nonce()) {
-            show_error('Solicitud inválida', 403);
-        }
-    }
+	private function group_ids(array &$errors)
+	{
+		$posted = $this->input->post('groups');
+		if ($posted === NULL) {
+			return [];
+		}
+		if (!is_array($posted)) {
+			$errors[] = 'Selección de grupos inválida.';
+			return [];
+		}
+		$ids = [];
+		foreach ($posted as $value) {
+			if (!is_scalar($value) || !ctype_digit((string) $value)) {
+				$errors[] = 'Selección de grupos inválida.';
+				return [];
+			}
+			$ids[] = (int) $value;
+		}
+		$ids = array_values(array_unique($ids));
+		if ($ids) {
+			$valid = $this->db->where_in('id', $ids)->count_all_results('groups');
+			if ($valid !== count($ids)) {
+				$errors[] = 'Hay grupos desconocidos.';
+			}
+		}
+		return $ids;
+	}
 
-    private function active_admin_count()
-    {
-        return (int) $this->db->from('users')
-            ->join('users_groups', 'users_groups.user_id = users.id')
-            ->join('groups', 'groups.id = users_groups.group_id')
-            ->where('users.active', 1)->where('groups.name', 'admin')
-            ->count_all_results();
-    }
+	private function render_form($mode, $user, array $selected, array $errors, $is_admin = TRUE, $own_account = FALSE)
+	{
+		$this->load->view('dashboard/user_form', [
+			'mode' => $mode, 'user' => $user, 'own_account' => $own_account, 'is_admin' => $is_admin,
+			'active_nav' => $own_account ? 'profile' : 'users',
+			'groups' => $is_admin ? $this->ion_auth->groups()->result() : [],
+			'selected_group_ids' => $selected,
+			'errors' => $errors, 'message' => (string) $this->session->flashdata('message'), 'settings' => $this->app_settings,
+			'mfa_enabled' => $mode === 'edit' && $user ? $this->User_mfa_model->enabled($user->id) : FALSE,
+			'nonce_name' => 'auth_nonce', 'nonce_hash' => $this->_get_csrf_nonce()['auth_nonce'],
+		] + $this->csrf_data());
+	}
+
+	private function require_post_nonce()
+	{
+		if ($this->input->method(TRUE) !== 'POST' || !$this->_valid_csrf_nonce()) {
+			show_error('Solicitud inválida', 403);
+		}
+	}
+
+	private function active_admin_count()
+	{
+		return (int) $this->db->from('users')
+			->join('users_groups', 'users_groups.user_id = users.id')
+			->join('groups', 'groups.id = users_groups.group_id')
+			->where('users.active', 1)->where('groups.name', 'admin')
+			->count_all_results();
+	}
 }

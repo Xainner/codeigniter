@@ -4,11 +4,16 @@ Project rules for AI agents and developers.
 
 ## Stack
 
-- **Framework**: CodeIgniter (`pocketarc/codeigniter` 3.4.5) installed by Composer in `vendor/pocketarc/codeigniter/system/`.
+- **Framework**: CodeIgniter (`pocketarc/codeigniter` 3.4.7) installed by Composer in `vendor/pocketarc/codeigniter/system/`.
 - **Auth**: IonAuth in `application/third_party/ion_auth` (registered as a package in `autoload.php`).
 - **PHP**: >= 8.4 with `curl`, `openssl`, `gd`, `mbstring`, `mysqli` and `xml`.
+- **Error tracking**: `sentry/sentry`, active only when `SENTRY_DSN` is set, started by the `pre_system` hook `application/hooks/Error_tracking.php`.
+- **Logs**: `monolog/monolog` writes JSON lines to stderr when `LOG_CHANNEL=stderr` (`application/core/MY_Log.php`).
+- **2FA**: TOTP via `spomky-labs/otphp` with QR codes from `bacon/bacon-qr-code`, wrapped by
+  `application/libraries/Two_factor.php`.
 - **Email**: PHPMailer 7.1 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API). The web entry point requires Composer dependencies.
-- **API**: `chriskacerguis/codeigniter-restserver` — config in `application/config/rest.php`, example controller `application/controllers/Api.php`.
+- **API**: `chriskacerguis/codeigniter-restserver` — config in `application/config/rest.php`. API controllers extend
+  `application/core/Api_controller.php` (X-API-Key authentication); example controller `application/controllers/Api.php`.
 - **Composer**: autoloads root `vendor/autoload.php`. Commit `composer.lock` and keep Composer's platform PHP at 8.4.
 
 ## Quick start
@@ -19,21 +24,32 @@ php -S localhost:8000 -t public public/router.php
 ```
 
 1. Set `APP_KEY` (64 hexadecimal characters), `APP_URL`, `CI_ENV`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASS` in the PHP process environment. `APP_KEY` is required even in development.
-   Optional: `TRUSTED_PROXIES` (comma-separated proxy IPs/CIDRs in front of PHP) and `LOG_THRESHOLD`
-   (defaults to `1`, errors only; `0` disables logging).
+   For local development they may live in `.env` (copy `.env.example`); `vlucas/phpdotenv` is a
+   development dependency, so `--no-dev` installs ignore the file and real variables always win.
+   Optional: `TRUSTED_PROXIES` (comma-separated proxy IPs/CIDRs in front of PHP), `LOG_THRESHOLD`
+   (defaults to `1`, errors only; `0` disables logging), `SESSION_DRIVER` (`files` by default,
+   `database` uses `ci_sessions`, `redis` needs `SESSION_SAVE_PATH`) and `SESSION_SAVE_PATH`.
+   Error tracking: `SENTRY_DSN`, with `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE` and `SENTRY_TRACES_SAMPLE_RATE`.
+   Logs: `LOG_CHANNEL=stderr` for JSON lines on stderr instead of files in `application/logs/`.
 2. Import `database/database.sql` into an empty database. Set a random `APP_SETUP_TOKEN` of at least 32 characters, then create the first administrator at `/auth/setup`. The wizard permanently closes after completion.
 3. Configure and test SMTP from `/auth/settings`. Public registration starts disabled.
 
-Useful URLs: `/auth`, `/auth/settings`, `/auth/login`, `/auth/setup`, `/auth/register` (when enabled), `/auth/forgot_password`, `/api/ping`.
+Useful URLs: `/auth`, `/auth/audit`, `/auth/api-keys`, `/auth/profile`, `/auth/security`, `/auth/settings`, `/auth/login`, `/auth/setup`, `/auth/register` (when enabled), `/auth/forgot_password`, `/api/ping`.
 
 ## Architecture
 
 ```
 application/
-  controllers/   Auth, Setup, Admin_users, Admin_groups, Admin_settings, Brand, Api, Welcome
-  models/        App_settings_model, Admin_user_model, Admin_audit_model, Rate_limiter_model
-  libraries/     MY_Email (PHPMailer transport for CI_Email)
-  core/          MY_Controller (settings, load_auth(), shared auth helpers), MY_Exceptions (HTML error escaping)
+  controllers/   Auth, Setup, Account_security, Admin_users, Admin_groups, Admin_settings, Admin_audit,
+                 Admin_api_keys, Brand, Api, Maintenance (CLI only), Welcome
+  models/        App_settings_model, Admin_user_model, Admin_audit_model, Rate_limiter_model, User_mfa_model,
+                 Api_key_model
+  libraries/     MY_Email (PHPMailer transport for CI_Email), Secret_box (purpose-bound encryption),
+                 Two_factor (TOTP and recovery codes), Password_policy (zxcvbn strength check)
+  core/          MY_Controller (settings, load_auth(), shared auth helpers), MY_Exceptions (HTML error escaping),
+                 Api_controller (API key authentication for REST controllers)
+                 MY_Log (optional JSON logs on stderr)
+  hooks/         Error_tracking (Sentry, pre_system hook)
   config/        database.php, email.php, rest.php, routes.php, config.php (subclass_prefix)
   views/         auth/, dashboard/, errors/, welcome_message.php
   language/      english/ and spanish/ packs for auth, ion_auth, rest; spanish/ also carries the CI3
@@ -47,7 +63,8 @@ vendor/          Composer packages, including PocketArc system/ (ignored by Git)
 Conventions: controllers that need authentication extend `MY_Controller` and call `$this->load_auth()`
 instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
 `register_active_user()` from `MY_Controller` rather than re-implementing them. `Auth` fills
-`$this->data` (title, message, per-field input arrays) and renders through `_render_page()`. REST endpoints are controller methods named `<resource>_<verb>` (e.g. `ping_get`).
+`$this->data` (title, message, per-field input arrays) and renders through `_render_page()`. REST endpoints are controller methods named `<resource>_<verb>` (e.g. `ping_get`) in controllers that
+extend `Api_controller`; every method requires an API key unless listed in `$public_methods`.
 
 ## Git workflow
 
@@ -122,11 +139,31 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
   password change ends the user's other sessions. Changing one's own email or password requires the
   current password. IonAuth's `logout()` does not revoke the remember-me token; use
   `revoke_remember_token()` alongside it.
+- `load_auth()` also regenerates the session id, destroying the old one, before IonAuth stores a
+  login: IonAuth's own `sess_regenerate(FALSE)` would leave a pre-login (possibly planted) id signed in.
+- `Auth::login()` caps failed logins per address (4 × `maximum_login_attempts` within
+  `lockout_time`, counted from `login_attempts`) on top of IonAuth's identity + address lockout,
+  and spends the same password-hashing work for unknown accounts as for existing ones so timing
+  does not reveal which accounts exist.
+- Two-factor authentication: when `user_mfa` has a row for the account, `Auth::login()` signs the
+  session out again after the password step (`mfa_pending`, five minutes) until `Auth::two_factor()`
+  accepts a TOTP code or an unused recovery code. Codes are single use (`last_step`, `used_at`),
+  attempts share the `mfa-user` limit, and remember-me cookies are issued only after the second
+  step. Enabling, disabling and regenerating codes require the current password; resets by an
+  administrator and self-service changes are audited.
+- API keys (`/auth/api-keys`) are shown once and stored as HMACs (`Api_key_model`); `api/` routes are
+  excluded from CSRF because they authenticate with `X-API-Key` only. Never read the session in API
+  controllers.
 - Account and group administration is recorded in `admin_audit` (field names and ids only, never
   personal values or secrets); settings changes go to `settings_audit`.
 - `public/index.php` sends a Content-Security-Policy with `script-src 'self'`: keep JavaScript in
   `public/assets/` and never add inline scripts or event handler attributes.
-- Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing.
+- Secrets the application stores (SMTP password, TOTP secrets) are sealed with `Secret_box`
+  (AES-256-GCM with a per-purpose HKDF subkey of `APP_KEY` and the purpose as associated data).
+  Derive HMAC keys with `Secret_box::key($purpose)`; never use `APP_KEY` directly.
+- Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing. Validate every new
+  password with `new_password_rules()` from `MY_Controller`: besides the minimum length it rejects
+  passwords that `bjeavons/zxcvbn-php` scores below 3, including ones built from the account's data.
 - Production: `display_errors = 0` (`public/index.php` switches error display by `ENVIRONMENT`).
 - Never log sensitive data (passwords, tokens, API keys).
 - Never put real credentials in the repo. The database reads environment variables, and `APP_KEY`
@@ -138,7 +175,11 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
 
 ## Testing
 
-- Before opening a PR, lint every changed PHP file: `php -l path/to/file.php`.
+- Before opening a PR, lint every changed PHP file (`php -l path/to/file.php`) and run
+  `composer lint:style`, `composer analyse` and `composer test:unit`. Indent with tabs
+  (`composer fix:style` rewrites spaces); list formatting-only commits in `.git-blame-ignore-revs`.
+- Unit tests live in `tests/unit/` (PHPUnit, no framework boot); HTTP flows belong in
+  `tests/integration.php`, which CI runs with file and with database sessions.
 - Smoke-test the affected flow (e.g. login / register / forgot password via `php -S localhost:8000 -t public public/router.php`)
   and leave evidence in the PR description.
 - When changing security configuration, verify forms still work (CSRF token present, AJAX still
@@ -147,11 +188,18 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
 ## Gotchas
 
 - `MY_Controller::load_auth()` applies database settings to IonAuth before construction and enables CI email.
-  SMTP is configured and verified in the dashboard; recovery reports unavailable until then.
+  SMTP is configured and verified in the dashboard; recovery reports unavailable until then, and also
+  while `APP_URL` is not an absolute URL (email links are built from it).
 - Use `database/upgrade_auth_settings_20260923.sql` for existing databases. It marks setup complete
   when users already exist, so existing installations cannot reopen the setup wizard. Then apply
-  `database/upgrade_add_admin_audit_20261010.sql` and `database/upgrade_widen_login_attempts_20261010.sql`.
+  `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql`,
+  `database/upgrade_add_two_factor_20261102.sql`, `database/upgrade_add_api_keys_20261102.sql`
+  and `database/upgrade_add_sessions_20261102.sql`.
+- IonAuth's `activate($id, $code)` compares the id strictly with the string mysqli returns. Resolve the
+  user with `get_user_by_activation_code()` and activate by the returned id (see `Auth::activate()`).
 - IonAuth language packs live in `application/language/english|spanish`; the dashboard and setup copy
   is Spanish. Keep new dashboard text consistent and escape it in views.
-- `.github/workflows/ci.yml` runs lint and the smoke suites on PHP 8.4/8.5/8.6 and the integration
-  suite on PHP 8.4 with MariaDB (including dashboard query counts).
+- `.github/workflows/ci.yml` runs PHPCS, PHPStan and PHPUnit on PHP 8.4, lint and the smoke suites on
+  PHP 8.4/8.5/8.6, and the integration
+  suite on PHP 8.4 with MariaDB, once with file sessions and once with database sessions (including
+  dashboard query counts).
