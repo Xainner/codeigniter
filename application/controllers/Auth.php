@@ -90,6 +90,17 @@ class Auth extends MY_Controller
 			$password = $this->input->post('password');
 			$password = is_string($password) ? $password : '';
 
+			if ($this->login_address_throttled())
+			{
+				$throttled = 'Demasiados intentos fallidos desde tu conexión. Espera unos minutos.';
+				if ($is_ajax) {
+					$this->output->set_status_header(429)->set_content_type('application/json', 'utf-8')
+						->set_output(json_encode(['success' => false, 'message' => $throttled], JSON_UNESCAPED_UNICODE));
+					return;
+				}
+				$this->session->set_flashdata('message', $throttled);
+				redirect('auth/login', 'refresh');
+			}
 			$this->equalize_login_work($identity, $password);
 
 			// check to see if the user is logging in
@@ -150,6 +161,17 @@ class Auth extends MY_Controller
 				$this->_render_page('auth' . DIRECTORY_SEPARATOR . 'login', $this->data);
 			}
 		}
+	}
+
+	/**
+	 * Ion Auth locks an identity per address, so a single address could still
+	 * try one password against every account. Cap its failures as well.
+	 */
+	private function login_address_throttled()
+	{
+		$this->load->model('Rate_limiter_model');
+		$failures = $this->Rate_limiter_model->recent_login_failures($this->input->ip_address(), $this->app_settings['lockout_time']);
+		return $failures >= 4 * $this->app_settings['maximum_login_attempts'];
 	}
 
 	/**

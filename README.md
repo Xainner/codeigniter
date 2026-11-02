@@ -48,6 +48,8 @@ Para actualizar una instalación previa, haz una copia de la base y ejecuta `dat
 
 Las sesiones quedan ligadas a la contraseña con la que se iniciaron: cualquier cambio de contraseña cierra las demás sesiones de esa cuenta. Tras desplegar esta versión, las sesiones abiertas previamente deben iniciar sesión una vez más.
 
+Además del bloqueo por cuenta, el inicio de sesión rechaza temporalmente una dirección IP que acumula 4 × «Intentos de acceso permitidos» fallos dentro del «Bloqueo temporal», aunque cada intento sea contra una cuenta distinta. Detrás de un proxy configura `TRUSTED_PROXIES`; si no, todos los visitantes comparten ese límite.
+
 ## Desarrollo
 
 El framework se instala en `vendor/pocketarc/codeigniter/system/`; no edites `vendor/` directamente. Las extensiones del nucleo pertenecen a `application/core/MY_*`. La correccion de escape de las paginas de error se conserva en `application/core/MY_Exceptions.php`.

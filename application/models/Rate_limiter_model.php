@@ -18,4 +18,16 @@ class Rate_limiter_model extends CI_Model
         $row = $this->db->get_where('request_limits', ['key_hash' => $key])->row();
         return $row && (int) $row->hits <= $max;
     }
+
+    /**
+     * Failed logins Ion Auth recorded from one address across every identity.
+     * Its own lockout counts identity and address together, so this is what
+     * stops one address from trying a password against many accounts.
+     */
+    public function recent_login_failures($ip, $seconds)
+    {
+        return (int) $this->db->where('ip_address', (string) $ip)
+            ->where('time >', time() - (int) $seconds)
+            ->count_all_results('login_attempts');
+    }
 }

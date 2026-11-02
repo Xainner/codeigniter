@@ -124,6 +124,10 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
   `revoke_remember_token()` alongside it.
 - `load_auth()` also regenerates the session id, destroying the old one, before IonAuth stores a
   login: IonAuth's own `sess_regenerate(FALSE)` would leave a pre-login (possibly planted) id signed in.
+- `Auth::login()` caps failed logins per address (4 × `maximum_login_attempts` within
+  `lockout_time`, counted from `login_attempts`) on top of IonAuth's identity + address lockout,
+  and spends the same password-hashing work for unknown accounts as for existing ones so timing
+  does not reveal which accounts exist.
 - Account and group administration is recorded in `admin_audit` (field names and ids only, never
   personal values or secrets); settings changes go to `settings_audit`.
 - `public/index.php` sends a Content-Security-Policy with `script-src 'self'`: keep JavaScript in

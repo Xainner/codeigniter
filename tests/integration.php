@@ -504,6 +504,22 @@ try {
     check($memberResult['status'] === 200, 'public member can log in');
     check(http('GET', '/auth/settings')['status'] === 403, 'member cannot access settings');
     check(http('GET', '/auth')['status'] !== 200, 'member cannot access admin dashboard');
+    // 4 x maximum_login_attempts (5) failures recorded from this address, each for another account.
+    $conn->query('DELETE FROM login_attempts');
+    $failure = $conn->prepare('INSERT INTO login_attempts (ip_address, login, time) VALUES (?, ?, ?)');
+    $address = '127.0.0.1';
+    $now = time();
+    for ($n = 1; $n <= 20; ++$n) {
+        $sprayedIdentity = "sprayed$n@example.test";
+        $failure->bind_param('ssi', $address, $sprayedIdentity, $now);
+        $failure->execute();
+    }
+    $sprayPage = http('GET', '/auth/login');
+    $sprayed = http('POST', '/auth/login', csrf($sprayPage['body']) + [
+        'identity' => 'public@example.test', 'password' => 'PublicStrongPassword123!',
+    ], true);
+    check($sprayed['status'] === 429, 'one address cannot keep failing logins across many accounts');
+    $conn->query('DELETE FROM login_attempts');
 
     $ping = http('GET', '/api/ping');
     check($ping['status'] === 200 && json_decode($ping['body'], true) === ['status' => 'ok'],
