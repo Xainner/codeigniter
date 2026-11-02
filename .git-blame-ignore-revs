@@ -1,0 +1,5 @@
+# Formatting-only commits, skipped by `git blame` (git config blame.ignoreRevsFile .git-blame-ignore-revs)
+# and by GitHub automatically.
+
+# Indent PHP files with tabs as .editorconfig requires
+bf3ac9442b4d15992609923e95dc2b62f8a57287
