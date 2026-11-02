@@ -85,11 +85,18 @@ class Auth extends MY_Controller
 
 		if ($this->form_validation->run() === TRUE)
 		{
+			$identity = $this->input->post('identity');
+			$identity = is_string($identity) ? $identity : '';
+			$password = $this->input->post('password');
+			$password = is_string($password) ? $password : '';
+
+			$this->equalize_login_work($identity, $password);
+
 			// check to see if the user is logging in
 			// check for "remember me"
 			$remember = $this->app_settings['remember_users'] && (bool) $this->input->post('remember');
 
-			if ($this->ion_auth->login($this->input->post('identity'), $this->input->post('password'), $remember))
+			if ($this->ion_auth->login($identity, $password, $remember))
 			{
 				//if the login is successful
 				if ($is_ajax) {
@@ -142,6 +149,19 @@ class Auth extends MY_Controller
 			} else {
 				$this->_render_page('auth' . DIRECTORY_SEPARATOR . 'login', $this->data);
 			}
+		}
+	}
+
+	/**
+	 * Ion Auth verifies and then hashes the password when the account exists
+	 * but only hashes it when it does not, so failed logins on real accounts
+	 * took twice as long. Spend the missing hash so timing reveals nothing.
+	 */
+	private function equalize_login_work($identity, $password)
+	{
+		if (!$this->ion_auth->is_max_login_attempts_exceeded($identity) && !$this->ion_auth->identity_check($identity))
+		{
+			$this->ion_auth->hash_password($password);
 		}
 	}
 
