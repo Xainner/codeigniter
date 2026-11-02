@@ -26,47 +26,39 @@ class Auth extends MY_Controller
 	 */
 	public function index()
 	{
-		if (!$this->ion_auth->logged_in())
-		{
-			// redirect them to the login page
-			redirect('auth/login', 'refresh');
+		$this->require_admin();
+		$listing_queries_start = count($this->db->queries);
+		$this->load->model('Admin_user_model');
+		$this->load->library('pagination');
+		$query = trim((string) $this->input->get('q', TRUE));
+		$query = mb_substr($query, 0, 100);
+		$total = $this->Admin_user_model->count($query);
+		$page = max(1, (int) $this->input->get('page'));
+		$page = min($page, max(1, (int) ceil($total / 20)));
+		$this->pagination->initialize([
+			'base_url' => site_url('auth'),
+			'total_rows' => $total,
+			'per_page' => 20,
+			'use_page_numbers' => TRUE,
+			'page_query_string' => TRUE,
+			'query_string_segment' => 'page',
+			'reuse_query_string' => TRUE,
+		]);
+		$this->data = [
+			'title' => 'Usuarios',
+			'users' => $this->Admin_user_model->page($query, 20, ($page - 1) * 20),
+			'groups' => $this->ion_auth->groups()->result(),
+			'pagination' => $this->pagination->create_links(),
+			'query' => $query,
+			'message' => strip_tags((string) $this->session->flashdata('message')),
+			'settings' => $this->app_settings,
+			'nonce_name' => 'auth_nonce',
+			'nonce_hash' => $this->_get_csrf_nonce()['auth_nonce'],
+		] + $this->csrf_data();
+		if (ENVIRONMENT === 'testing') {
+			$this->output->set_header('X-Query-Count: ' . (count($this->db->queries) - $listing_queries_start));
 		}
-		else
-		{
-			$this->require_admin();
-			$listing_queries_start = count($this->db->queries);
-			$this->load->model('Admin_user_model');
-			$this->load->library('pagination');
-			$query = trim((string) $this->input->get('q', TRUE));
-			$query = mb_substr($query, 0, 100);
-			$total = $this->Admin_user_model->count($query);
-			$page = max(1, (int) $this->input->get('page'));
-			$page = min($page, max(1, (int) ceil($total / 20)));
-			$this->pagination->initialize([
-				'base_url' => site_url('auth'),
-				'total_rows' => $total,
-				'per_page' => 20,
-				'use_page_numbers' => TRUE,
-				'page_query_string' => TRUE,
-				'query_string_segment' => 'page',
-				'reuse_query_string' => TRUE,
-			]);
-			$this->data = [
-				'title' => 'Usuarios',
-				'users' => $this->Admin_user_model->page($query, 20, ($page - 1) * 20),
-				'groups' => $this->ion_auth->groups()->result(),
-				'pagination' => $this->pagination->create_links(),
-				'query' => $query,
-				'message' => strip_tags((string) $this->session->flashdata('message')),
-				'settings' => $this->app_settings,
-				'nonce_name' => 'auth_nonce',
-				'nonce_hash' => $this->_get_csrf_nonce()['auth_nonce'],
-			] + $this->csrf_data();
-			if (ENVIRONMENT === 'testing') {
-				$this->output->set_header('X-Query-Count: ' . (count($this->db->queries) - $listing_queries_start));
-			}
-			$this->_render_page('dashboard/index', $this->data);
-		}
+		$this->_render_page('dashboard/index', $this->data);
 	}
 
 	/**
@@ -99,7 +91,7 @@ class Auth extends MY_Controller
 					return;
 				}
 				$this->session->set_flashdata('message', $throttled);
-				redirect('auth/login', 'refresh');
+				redirect('auth/login');
 			}
 			$this->equalize_login_work($identity, $password);
 
@@ -113,12 +105,12 @@ class Auth extends MY_Controller
 				if ($is_ajax) {
 					$this->output->set_content_type('application/json', 'utf-8')->set_output(json_encode([
 						'success' => true, 'message' => strip_tags($this->ion_auth->messages()),
-						'redirect' => site_url($this->ion_auth->is_admin() ? 'auth' : ''),
+						'redirect' => site_url($this->post_login_target()),
 					]));
 					return;
 				} else {
 					$this->session->set_flashdata('message', $this->ion_auth->messages());
-					redirect($this->ion_auth->is_admin() ? 'auth' : '/', 'refresh');
+					redirect($this->post_login_target());
 				}
 			}
 			else
@@ -130,7 +122,7 @@ class Auth extends MY_Controller
 					return;
 				} else {
 					$this->session->set_flashdata('message', $this->ion_auth->errors());
-					redirect('auth/login', 'refresh'); // use redirects instead of loading views for compatibility with MY_Controller libraries
+					redirect('auth/login');
 				}
 			}
 		}
@@ -212,10 +204,7 @@ class Auth extends MY_Controller
 	 */
 	public function change_password()
 	{
-		if (!$this->ion_auth->logged_in())
-		{
-			redirect('auth/login', 'refresh');
-		}
+		$this->require_login();
 
 		$this->form_validation->set_rules('old', $this->lang->line('change_password_validation_old_password_label'), 'required');
 		$this->form_validation->set_rules('new', $this->lang->line('change_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|matches[new_confirm]');
@@ -237,7 +226,7 @@ class Auth extends MY_Controller
 			if (!$this->Rate_limiter_model->allow('reauth-user', (string) $this->ion_auth->get_user_id(), 5, 900))
 			{
 				$this->session->set_flashdata('message', 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.');
-				redirect('auth/change_password', 'refresh');
+				redirect('auth/change_password');
 			}
 
 			$change = $this->ion_auth->change_password($identity, $this->input->post('old'), $this->input->post('new'));
@@ -252,7 +241,7 @@ class Auth extends MY_Controller
 			else
 			{
 				$this->session->set_flashdata('message', $this->ion_auth->errors());
-				redirect('auth/change_password', 'refresh');
+				redirect('auth/change_password');
 			}
 		}
 	}
@@ -428,7 +417,7 @@ class Auth extends MY_Controller
 		{
 			// if the code is invalid then send them back to the forgot password page
 			$this->session->set_flashdata('message', $this->ion_auth->errors());
-			redirect("auth/forgot_password", 'refresh');
+			redirect('auth/forgot_password');
 		}
 	}
 

@@ -11,7 +11,13 @@ $page_title = (string) ($page_title ?? 'Administración');
 $active_nav = (string) ($active_nav ?? 'users');
 // Members reach this shell only for their own profile.
 $show_admin_nav = !isset($is_admin) || $is_admin;
-$home_url = site_url($show_admin_nav ? 'auth' : '/');
+$home_url = site_url($show_admin_nav ? 'auth' : 'auth/profile');
+$nav_link = static function ($key, $label, $icon, $url) use ($active_nav) {
+    $active = $active_nav === $key;
+    return '<a class="nav-link' . ($active ? ' is-active' : '') . '"' . ($active ? ' aria-current="page"' : '')
+        . ' href="' . html_escape($url) . '"><span class="nav-icon" aria-hidden="true">' . $icon . '</span>'
+        . html_escape($label) . '</a>';
+};
 ?>
 <!doctype html>
 <html lang="es">
@@ -34,20 +40,11 @@ $home_url = site_url($show_admin_nav ? 'auth' : '/');
         </a>
         <nav class="sidebar-nav" aria-label="Secciones">
             <?php if ($show_admin_nav): ?>
-            <a class="nav-link<?php echo $active_nav === 'users' ? ' is-active' : ''; ?>" <?php echo $active_nav === 'users' ? 'aria-current="page"' : ''; ?> href="<?php echo html_escape(site_url('auth')); ?>">
-                <span class="nav-icon" aria-hidden="true">◫</span>Usuarios
-            </a>
-            <a class="nav-link<?php echo $active_nav === 'groups' ? ' is-active' : ''; ?>" <?php echo $active_nav === 'groups' ? 'aria-current="page"' : ''; ?> href="<?php echo html_escape(site_url('auth') . '#groups'); ?>">
-                <span class="nav-icon" aria-hidden="true">◇</span>Grupos
-            </a>
-            <a class="nav-link<?php echo $active_nav === 'settings' ? ' is-active' : ''; ?>" <?php echo $active_nav === 'settings' ? 'aria-current="page"' : ''; ?> href="<?php echo html_escape(site_url('auth/settings')); ?>">
-                <span class="nav-icon" aria-hidden="true">⚙</span>Configuración
-            </a>
-            <?php else: ?>
-            <a class="nav-link is-active" aria-current="page" href="<?php echo html_escape(current_url()); ?>">
-                <span class="nav-icon" aria-hidden="true">◫</span>Mi perfil
-            </a>
+            <?php echo $nav_link('users', 'Usuarios', '◫', site_url('auth')); ?>
+            <?php echo $nav_link('groups', 'Grupos', '◇', site_url('auth') . '#groups'); ?>
+            <?php echo $nav_link('settings', 'Configuración', '⚙', site_url('auth/settings')); ?>
             <?php endif; ?>
+            <?php echo $nav_link('profile', 'Mi perfil', '◉', site_url('auth/profile')); ?>
         </nav>
         <div class="sidebar-foot">
             <span class="sidebar-foot-label"><?php echo $show_admin_nav ? 'Administración' : 'Cuenta'; ?></span>

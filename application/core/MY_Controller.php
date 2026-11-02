@@ -103,11 +103,35 @@ class MY_Controller extends CI_Controller
         $this->db->update('users', ['remember_selector' => NULL, 'remember_code' => NULL], ['id' => (int) $user_id]);
     }
 
+    /** Sends anonymous visitors to the login page and back to this page afterwards. */
+    protected function require_login()
+    {
+        if ($this->ion_auth->logged_in()) {
+            return;
+        }
+        if ($this->input->method(TRUE) === 'GET') {
+            $this->session->set_userdata('auth_return_to', uri_string());
+        }
+        redirect('auth/login');
+    }
+
     protected function require_admin()
     {
-        if (!$this->ion_auth->logged_in() || !$this->ion_auth->is_admin()) {
+        $this->require_login();
+        if (!$this->ion_auth->is_admin()) {
             show_error('Acceso denegado', 403);
         }
+    }
+
+    /** Where to go after signing in: the page that asked for it, or the user's own start page. */
+    protected function post_login_target()
+    {
+        $target = $this->session->userdata('auth_return_to');
+        $this->session->unset_userdata('auth_return_to');
+        if (is_string($target) && preg_match('~^auth(/[a-z0-9_\-]+)*$~i', $target)) {
+            return $target;
+        }
+        return $this->ion_auth->is_admin() ? 'auth' : 'auth/profile';
     }
 
     /** Registers an account that is active immediately, whatever the public activation setting. */

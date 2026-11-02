@@ -24,6 +24,12 @@ function redirected(array $response): bool
     return in_array($response['status'], [302, 303], true);
 }
 
+function redirectsToLogin(array $response): bool
+{
+    return in_array($response['status'], [302, 303, 307], true)
+        && preg_match('~^Location:\s*\S*/auth/login\s*$~mi', $response['headers']) === 1;
+}
+
 function http(string $method, string $path, ?array $data = null, bool $ajax = false): array
 {
     global $base, $cookieFile;
@@ -156,6 +162,7 @@ try {
         'setup creates one administrator (HTTP ' . $created['status'] . ', users ' . countUsers() . ')');
     check(http('GET', '/auth/setup')['status'] === 404, 'setup closes after completion');
 
+    check(redirectsToLogin(http('GET', '/auth/settings')), 'anonymous visitors are sent to the login page');
     $login = http('GET', '/auth/login');
     check($login['status'] === 200, 'login page opens');
     check(str_contains($login['body'], 'assets/auth.css?v=') && str_contains($login['body'], 'assets/auth.js?v='),
@@ -186,7 +193,7 @@ try {
     ], true);
     $loginJson = json_decode($loginResult['body'], true);
     check($loginResult['status'] === 200 && ($loginJson['success'] ?? false)
-        && str_contains($loginJson['redirect'] ?? '', '/auth'), 'admin login redirects to dashboard');
+        && str_ends_with($loginJson['redirect'] ?? '', '/auth/settings'), 'login returns to the page that asked for it');
     check(!str_contains(withCookie('/auth', 'ci_session=' . $preLoginSession)['body'], 'Usuarios y grupos'),
         'login never authenticates the pre-login session id');
 
@@ -312,7 +319,7 @@ try {
         'deactivation is audited');
     sleep(2);
     $cookieFile = $memberCookieFile;
-    check(http('GET', '/auth/edit_user/' . $id)['status'] === 403,
+    check(redirectsToLogin(http('GET', '/auth/edit_user/' . $id)),
         'deactivation revokes an existing session');
     $cookieFile = $adminCookieFile;
     $page = http('GET', '/auth?q=grace');
@@ -337,7 +344,7 @@ try {
     check(redirected($passwordReset) && $tokens['remember_selector'] === null,
         'admin password change clears remember-me tokens');
     $cookieFile = $memberCookieFile;
-    check(http('GET', '/auth/edit_user/' . $id)['status'] === 403,
+    check(redirectsToLogin(http('GET', '/auth/edit_user/' . $id)),
         'password change ends existing sessions of that user');
     $memberLogin = http('GET', '/auth/login');
     $relogin = http('POST', '/auth/login', csrf($memberLogin['body']) + [
@@ -498,7 +505,7 @@ try {
         $adminHash = $conn->query("SELECT password FROM users WHERE email='ada@example.test'")->fetch_assoc()['password'];
         check(redirected($reset) && password_verify('RecoveredPassword123!', $adminHash),
             'recovery token changes the password');
-        check(http('GET', '/auth/settings')['status'] === 403, 'password recovery ends the previous admin session');
+        check(redirectsToLogin(http('GET', '/auth/settings')), 'password recovery ends the previous admin session');
         $login = http('GET', '/auth/login');
         $again = http('POST', '/auth/login', csrf($login['body']) + [
             'identity' => 'ada@example.test', 'password' => 'RecoveredPassword123!',
@@ -517,7 +524,11 @@ try {
     $memberResult = http('POST', '/auth/login', csrf($memberLogin['body']) + [
         'identity' => 'public@example.test', 'password' => 'PublicStrongPassword123!',
     ], true);
-    check($memberResult['status'] === 200, 'public member can log in');
+    check($memberResult['status'] === 200 && str_ends_with(json_decode($memberResult['body'], true)['redirect'] ?? '', '/auth/profile'),
+        'members land on their profile after signing in');
+    $profile = http('GET', '/auth/profile');
+    check($profile['status'] === 200 && str_contains($profile['body'], 'Mi perfil')
+        && str_contains($profile['body'], 'value="public@example.test"'), 'profile page shows the signed-in member');
     check(http('GET', '/auth/settings')['status'] === 403, 'member cannot access settings');
     check(http('GET', '/auth')['status'] !== 200, 'member cannot access admin dashboard');
     $changeForm = http('GET', '/auth/change_password');

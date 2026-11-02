@@ -48,11 +48,19 @@ class Admin_users extends MY_Controller
         $this->render_form('create', $user, $selected, $errors);
     }
 
+    /** The signed-in user's own profile, for members and administrators alike. */
+    public function profile()
+    {
+        $this->require_login();
+        $this->edit((int) $this->ion_auth->get_user_id());
+    }
+
     public function edit($id)
     {
         $id = (int) $id;
         // logged_in() may sign a remembered user in, so it must run before user().
-        $current = $this->ion_auth->logged_in() ? $this->ion_auth->user()->row() : NULL;
+        $this->require_login();
+        $current = $this->ion_auth->user()->row();
         if (!$current || (!$this->ion_auth->is_admin() && (int) $current->id !== $id)) {
             show_error('Acceso denegado', 403);
             return;
@@ -137,7 +145,7 @@ class Admin_users extends MY_Controller
                         $this->_bind_session_password();
                     }
                     $this->session->set_flashdata('message', 'Usuario actualizado.');
-                    redirect($is_admin ? 'auth' : '/');
+                    redirect($is_admin ? 'auth' : 'auth/profile');
                     return;
                 }
                 $this->db->trans_rollback();
@@ -250,6 +258,7 @@ class Admin_users extends MY_Controller
     {
         $this->load->view('dashboard/user_form', [
             'mode' => $mode, 'user' => $user, 'own_account' => $own_account, 'is_admin' => $is_admin,
+            'active_nav' => $own_account ? 'profile' : 'users',
             'groups' => $is_admin ? $this->ion_auth->groups()->result() : [],
             'selected_group_ids' => $selected,
             'errors' => $errors, 'message' => '', 'settings' => $this->app_settings,

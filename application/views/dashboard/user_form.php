@@ -20,7 +20,7 @@ $heading = $editing ? ($is_admin ? 'Editar usuario' : 'Mi perfil') : 'Crear usua
 $action = $editing ? site_url('auth/edit_user/' . $user_id) : site_url('auth/create_user');
 $this->load->view('dashboard/_header', [
     'page_title' => $heading,
-    'active_nav' => 'users',
+    'active_nav' => (string) ($active_nav ?? 'users'),
     'settings' => $settings ?? [],
     'is_admin' => $is_admin,
 ]);
