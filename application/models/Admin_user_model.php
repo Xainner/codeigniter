@@ -23,7 +23,9 @@ class Admin_user_model extends CI_Model
     public function page($query, $limit, $offset)
     {
         $this->search($query);
-        $users = $this->db->order_by('id', 'DESC')->limit($limit, $offset)->get('users')->result();
+        // Only what the directory shows: never load password hashes or tokens.
+        $users = $this->db->select('id, email, first_name, last_name, active, last_login')
+            ->order_by('id', 'DESC')->limit($limit, $offset)->get('users')->result();
         if (!$users) {
             return [];
         }
