@@ -751,6 +751,10 @@ try {
         . " + (SELECT COUNT(*) FROM login_attempts WHERE login = 'stale@example.test') AS total")->fetch_assoc()['total'];
     check(str_starts_with($cleanup, 'Deleted ') && $stale === 0, 'the maintenance command removes expired rows');
     check(http('GET', '/maintenance/cleanup')['status'] === 404, 'maintenance only runs from the command line');
+    $jsonLog = (string) shell_exec('LOG_CHANNEL=stderr LOG_THRESHOLD=4 ' . escapeshellarg(PHP_BINARY) . ' '
+        . escapeshellarg(dirname(__DIR__) . '/public/index.php') . ' maintenance cleanup 2>&1 >/dev/null');
+    $logEntry = json_decode((string) strtok($jsonLog, "\n"), true);
+    check(is_array($logEntry) && isset($logEntry['message'], $logEntry['level_name']), 'LOG_CHANNEL=stderr writes JSON log lines');
 
     $ping = http('GET', '/api/ping');
     check($ping['status'] === 200 && json_decode($ping['body'], true) === ['status' => 'ok'],
