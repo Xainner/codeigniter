@@ -51,8 +51,9 @@ class Admin_users extends MY_Controller
     public function edit($id)
     {
         $id = (int) $id;
-        $current = $this->ion_auth->user()->row();
-        if (!$this->ion_auth->logged_in() || !$current || (!$this->ion_auth->is_admin() && (int) $current->id !== $id)) {
+        // logged_in() may sign a remembered user in, so it must run before user().
+        $current = $this->ion_auth->logged_in() ? $this->ion_auth->user()->row() : NULL;
+        if (!$current || (!$this->ion_auth->is_admin() && (int) $current->id !== $id)) {
             show_error('Acceso denegado', 403);
             return;
         }

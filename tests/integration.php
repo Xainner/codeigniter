@@ -515,6 +515,17 @@ try {
     check(password_verify('PublicStrongPassword123!', $publicHash),
         'password changes stop checking the current password after repeated failures');
 
+    $conn->query("UPDATE app_settings SET value='1' WHERE name='remember_users'");
+    $rememberLogin = http('GET', '/auth/login');
+    http('POST', '/auth/login', csrf($rememberLogin['body']) + [
+        'identity' => 'public@example.test', 'password' => 'PublicStrongPassword123!', 'remember' => '1',
+    ], true);
+    $publicId = (int) $conn->query("SELECT id FROM users WHERE email='public@example.test'")->fetch_assoc()['id'];
+    $remembered = withCookie('/auth/edit_user/' . $publicId, 'remember_code=' . cookieValue('remember_code'));
+    check($remembered['status'] === 200 && str_contains($remembered['body'], 'Mi perfil'),
+        'a remembered member opens the profile from a new browser session');
+    $conn->query("UPDATE app_settings SET value='0' WHERE name='remember_users'");
+
     // 4 x maximum_login_attempts (5) failures recorded from this address, each for another account.
     $conn->query('DELETE FROM login_attempts');
     $failure = $conn->prepare('INSERT INTO login_attempts (ip_address, login, time) VALUES (?, ?, ?)');
