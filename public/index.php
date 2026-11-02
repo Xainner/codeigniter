@@ -53,14 +53,31 @@
  *
  * NOTE: If you change these, also change the error_reporting() code below
  */
-	define('ENVIRONMENT', getenv('CI_ENV') ?: (isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'development'));
-
 	if (PHP_VERSION_ID < 80400)
 	{
 		header('HTTP/1.1 503 Service Unavailable', TRUE, 503);
 		echo 'PHP 8.4 or newer is required.';
 		exit(3);
 	}
+
+	$composer_autoload = dirname(__DIR__).'/vendor/autoload.php';
+	if ( ! is_file($composer_autoload))
+	{
+		header('HTTP/1.1 503 Service Unavailable', TRUE, 503);
+		echo 'Composer dependencies are not installed.';
+		exit(3);
+	}
+	require_once $composer_autoload;
+
+	// Local development may keep its variables in .env. vlucas/phpdotenv is a
+	// development dependency, so installs with --no-dev never read the file,
+	// and real environment variables always take precedence.
+	if (class_exists('Dotenv\\Dotenv') && is_file(dirname(__DIR__).'/.env'))
+	{
+		Dotenv\Dotenv::createUnsafeImmutable(dirname(__DIR__))->safeLoad();
+	}
+
+	define('ENVIRONMENT', getenv('CI_ENV') ?: (isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'development'));
 
 	// One external key is required for sessions, authentication and encrypted settings.
 	$app_key = getenv('APP_KEY');
@@ -87,14 +104,6 @@
 	{
 		header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 	}
-	$composer_autoload = dirname(__DIR__).'/vendor/autoload.php';
-	if ( ! is_file($composer_autoload))
-	{
-		header('HTTP/1.1 503 Service Unavailable', TRUE, 503);
-		echo 'Composer dependencies are not installed.';
-		exit(3);
-	}
-	require_once $composer_autoload;
 	if ( ! class_exists('PHPMailer\\PHPMailer\\PHPMailer'))
 	{
 		header('HTTP/1.1 503 Service Unavailable', TRUE, 503);

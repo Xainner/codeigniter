@@ -24,6 +24,8 @@ php -S localhost:8000 -t public public/router.php
 ```
 
 1. Set `APP_KEY` (64 hexadecimal characters), `APP_URL`, `CI_ENV`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASS` in the PHP process environment. `APP_KEY` is required even in development.
+   For local development they may live in `.env` (copy `.env.example`); `vlucas/phpdotenv` is a
+   development dependency, so `--no-dev` installs ignore the file and real variables always win.
    Optional: `TRUSTED_PROXIES` (comma-separated proxy IPs/CIDRs in front of PHP), `LOG_THRESHOLD`
    (defaults to `1`, errors only; `0` disables logging), `SESSION_DRIVER` (`files` by default,
    `database` uses `ci_sessions`, `redis` needs `SESSION_SAVE_PATH`) and `SESSION_SAVE_PATH`.

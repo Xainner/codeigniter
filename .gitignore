@@ -9,6 +9,9 @@ application/logs/*
 !application/*/.htaccess
 
 /vendor/
+
+# Local environment (see .env.example)
+.env
 /storage/
 
 # IDE Files

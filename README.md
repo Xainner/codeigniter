@@ -35,6 +35,8 @@ Plantilla de CodeIgniter 3 (fork PocketArc) con IonAuth, PHPMailer y un dashboar
 php -S localhost:8000 -t public public/router.php
 ```
 
+En desarrollo puedes copiar `.env.example` a `.env` en la raíz del proyecto: se lee solo con las dependencias de desarrollo instaladas (`composer install` sin `--no-dev`) y las variables reales del entorno siempre tienen prioridad. En producción define las variables en el entorno del proceso PHP.
+
 En PowerShell puedes configurar temporalmente las variables con `$env:APP_KEY = '...'` y `$env:DB_NAME = '...'`. En produccion, configura HTTPS, `CI_ENV=production`, `APP_URL` y permisos de escritura para `application/cache/`, `application/logs/` y `storage/brand/`. Conserva `APP_KEY` para poder descifrar la contraseña SMTP.
 
 El servidor de desarrollo solo sirve los tipos de archivo estatico permitidos desde `public/`; Apache usa `public/.htaccess` para reescribir las rutas. Para Nginx, envía las rutas no estaticas a `public/index.php` y conserva `public/` como unica raiz web.
