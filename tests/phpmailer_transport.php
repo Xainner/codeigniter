@@ -94,6 +94,18 @@ check(count($mailer->getReplyToAddresses()) === 1, 'Reply-To address was not for
 check(strpos($mime, 'Hello HTML') !== FALSE && strpos($mime, 'Hello text') !== FALSE, 'HTML or text body is missing');
 check(strpos($mime, 'check.txt') !== FALSE, 'Attachment is missing');
 
+$html_only = new Test_Email(array('protocol' => 'smtp', 'mailtype' => 'html'));
+$html_only->from('sender@example.test');
+$html_only->to('recipient@example.test');
+$html_only->subject('Generated text part');
+$html_only->message('<html><head><title>Ignored</title></head><body><h1>Activa tu cuenta</h1><p>Hola &amp; bienvenida.</p>'
+	.'<p><a href="https://app.example.test/auth/activate/7/abc.def">Activar cuenta</a></p></body></html>');
+check($html_only->send(), 'HTML-only message failed');
+$alt = CaptureMailer::$last->AltBody;
+check(strpos(CaptureMailer::$mime, 'text/plain') !== FALSE, 'HTML-only message has no text/plain part');
+check(strpos($alt, 'Activar cuenta: https://app.example.test/auth/activate/7/abc.def') !== FALSE, 'Generated text part lost the link');
+check(strpos($alt, 'Hola & bienvenida.') !== FALSE && strpos($alt, '<') === FALSE && strpos($alt, 'Ignored') === FALSE, 'Generated text part kept markup');
+
 $plain = new Test_Email(array('protocol' => 'smtp', 'mailtype' => 'text'));
 $plain->from('sender@example.test');
 $plain->to('recipient@example.test');

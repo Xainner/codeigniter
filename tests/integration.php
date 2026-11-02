@@ -618,6 +618,8 @@ try {
         $activationMail = newMessage($before);
         check($activation['status'] === 200 && $activationMail['recipient'] === 'activate@example.test',
             'registration sends activation mail through simulated SMTP');
+        check(str_contains($activationMail['body'], 'text/plain') && str_contains(quoted_printable_decode($activationMail['body']), 'Activar cuenta: http'),
+            'activation mail carries a plain-text part with the link');
         $inactive = $conn->query("SELECT active FROM users WHERE email='activate@example.test'")->fetch_assoc();
         check((int) $inactive['active'] === 0, 'new account stays inactive until confirmation');
         $mailBody = quoted_printable_decode($activationMail['body']);

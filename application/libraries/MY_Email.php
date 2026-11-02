@@ -310,10 +310,8 @@ class MY_Email extends CI_Email
 			{
 				$mailer->isHTML(TRUE);
 				$mailer->Body = $this->_pm_body;
-				if ($this->_pm_alt !== '')
-				{
-					$mailer->AltBody = $this->_pm_alt;
-				}
+				// HTML-only mail scores worse with spam filters and is unreadable in text clients.
+				$mailer->AltBody = $this->_pm_alt !== '' ? $this->_pm_alt : $this->_pm_text_from_html($this->_pm_body);
 			}
 			else
 			{
@@ -389,6 +387,31 @@ class MY_Email extends CI_Email
 	}
 
 	// --------------------------------------------------------------------
+
+	/**
+	 * Plain-text version of an HTML body. Unlike PHPMailer::html2text() it
+	 * keeps link targets, which carry the activation and recovery URLs.
+	 *
+	 * @param	string	$html
+	 * @return	string
+	 */
+	protected function _pm_text_from_html($html)
+	{
+		$html = preg_replace('#<(head|style|script|title)\b[^>]*>.*?</\1>#is', '', (string) $html);
+		$html = preg_replace_callback('#<a\b[^>]*\bhref\s*=\s*(["\'])(.*?)\1[^>]*>(.*?)</a>#is', function ($match)
+		{
+			$text = trim(html_entity_decode(strip_tags($match[3]), ENT_QUOTES, 'UTF-8'));
+			$url = html_entity_decode($match[2], ENT_QUOTES, 'UTF-8');
+			return ($text === '' OR $text === $url) ? $url : $text.': '.$url;
+		}, $html);
+		$html = preg_replace('#<br\s*/?>#i', "\n", $html);
+		$html = preg_replace('#</(p|div|h[1-6]|li|tr|table)>#i', "\n\n", $html);
+		$text = html_entity_decode(strip_tags($html), ENT_QUOTES, 'UTF-8');
+		$text = preg_replace("/[ \t]+/", ' ', $text);
+		$text = preg_replace("/ *\n */", "\n", $text);
+
+		return trim(preg_replace("/\n{3,}/", "\n\n", $text));
+	}
 
 	/**
 	 * Build and configure a PHPMailer transport from the CI_Email settings
