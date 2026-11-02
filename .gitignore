@@ -22,3 +22,6 @@ application/logs/*
 *.stTheme.cache
 *.sublime-workspace
 *.sublime-project
+
+# Test and analysis caches
+.phpunit.cache/
