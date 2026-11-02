@@ -17,7 +17,7 @@ Plantilla de CodeIgniter 3 (fork PocketArc) con IonAuth, PHPMailer y un dashboar
 | Variable | Uso |
 | --- | --- |
 | `APP_KEY` | Clave obligatoria de la aplicacion y los ajustes cifrados. No la incluyas en el repositorio. |
-| `APP_URL` | URL publica sin barra final; obligatoria en produccion. |
+| `APP_URL` | URL publica sin barra final; obligatoria en produccion y para configurar SMTP, porque los enlaces de los correos la usan. Si es `https://`, las cookies se marcan `secure` y se envía HSTS. |
 | `CI_ENV` | `development`, `testing` o `production`. |
 | `DB_HOST`, `DB_PORT` | Host y puerto de MariaDB/MySQL (`127.0.0.1` y `3306` por defecto). |
 | `DB_NAME`, `DB_USER`, `DB_PASS` | Nombre, usuario y contraseña de la base de datos. |

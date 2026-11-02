@@ -175,7 +175,8 @@ extend `Api_controller`; every method requires an API key unless listed in `$pub
 ## Gotchas
 
 - `MY_Controller::load_auth()` applies database settings to IonAuth before construction and enables CI email.
-  SMTP is configured and verified in the dashboard; recovery reports unavailable until then.
+  SMTP is configured and verified in the dashboard; recovery reports unavailable until then, and also
+  while `APP_URL` is not an absolute URL (email links are built from it).
 - Use `database/upgrade_auth_settings_20260923.sql` for existing databases. It marks setup complete
   when users already exist, so existing installations cannot reopen the setup wizard. Then apply
   `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql`,

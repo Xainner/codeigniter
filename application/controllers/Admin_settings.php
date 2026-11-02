@@ -117,6 +117,9 @@ class Admin_settings extends MY_Controller
             }
             $values[$name] = $value;
         }
+        if ($values['smtp_host'] !== '' && !$this->App_settings_model->app_url_ready()) {
+            $errors[] = 'Define APP_URL con la URL pública de la aplicación antes de configurar SMTP: los enlaces de los correos la necesitan.';
+        }
         if ($values['smtp_from_email'] !== '' && !filter_var($values['smtp_from_email'], FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Correo remitente inválido.';
         }

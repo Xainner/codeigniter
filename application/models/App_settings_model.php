@@ -50,7 +50,7 @@ class App_settings_model extends CI_Model
             $settings[$name] = (int) $settings[$name];
         }
         $settings['smtp_configured'] = $settings['smtp_host'] !== ''
-            && $settings['smtp_from_email'] !== '' && $settings['smtp_verified'];
+            && $settings['smtp_from_email'] !== '' && $settings['smtp_verified'] && $this->app_url_ready();
         unset($settings['smtp_password']);
         return $settings;
     }
@@ -137,6 +137,12 @@ class App_settings_model extends CI_Model
             $this->smtp_plain = NULL;
         }
         return $ok;
+    }
+
+    /** Activation and recovery links are absolute URLs built from APP_URL. */
+    public function app_url_ready()
+    {
+        return preg_match('~^https?://[^/\s]+~i', (string) getenv('APP_URL')) === 1;
     }
 
     public function setup_completed()
