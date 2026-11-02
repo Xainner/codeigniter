@@ -9,27 +9,27 @@ use chriskacerguis\RestServer\RestController;
  */
 abstract class Api_controller extends RestController
 {
-    /** Methods such as 'ping_get' that answer without an API key. */
-    protected $public_methods = [];
+	/** Methods such as 'ping_get' that answer without an API key. */
+	protected $public_methods = [];
 
-    /** Owner of the API key that authenticated the current request. */
-    protected $api_user_id = NULL;
+	/** Owner of the API key that authenticated the current request. */
+	protected $api_user_id = NULL;
 
-    public function _remap($object_called, $arguments = [])
-    {
-        $method = preg_replace('/\.[a-z0-9]+$/i', '', (string) $object_called) . '_' . $this->request->method;
-        if (!in_array($method, $this->public_methods, TRUE)) {
-            $this->load->database();
-            $this->load->model('Api_key_model');
-            $key = $this->Api_key_model->authenticate((string) $this->input->get_request_header('X-API-Key'));
-            if ($key === NULL) {
-                $this->response([
-                    $this->config->item('rest_status_field_name') => FALSE,
-                    $this->config->item('rest_message_field_name') => 'Clave de API ausente o no válida.',
-                ], self::HTTP_UNAUTHORIZED);
-            }
-            $this->api_user_id = (int) $key->user_id;
-        }
-        parent::_remap($object_called, $arguments);
-    }
+	public function _remap($object_called, $arguments = [])
+	{
+		$method = preg_replace('/\.[a-z0-9]+$/i', '', (string) $object_called) . '_' . $this->request->method;
+		if (!in_array($method, $this->public_methods, TRUE)) {
+			$this->load->database();
+			$this->load->model('Api_key_model');
+			$key = $this->Api_key_model->authenticate((string) $this->input->get_request_header('X-API-Key'));
+			if ($key === NULL) {
+				$this->response([
+					$this->config->item('rest_status_field_name') => FALSE,
+					$this->config->item('rest_message_field_name') => 'Clave de API ausente o no válida.',
+				], self::HTTP_UNAUTHORIZED);
+			}
+			$this->api_user_id = (int) $key->user_id;
+		}
+		parent::_remap($object_called, $arguments);
+	}
 }
