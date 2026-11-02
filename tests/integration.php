@@ -98,6 +98,28 @@ function cookieValue(string $name): string
     throw new RuntimeException("Missing cookie $name");
 }
 
+function base32Decode(string $value): string
+{
+    $bits = '';
+    foreach (str_split(rtrim(strtoupper($value), '=')) as $char) {
+        $bits .= str_pad(decbin((int) strpos('ABCDEFGHIJKLMNOPQRSTUVWXYZ234567', $char)), 5, '0', STR_PAD_LEFT);
+    }
+    $bytes = '';
+    foreach (str_split($bits, 8) as $byte) {
+        if (strlen($byte) === 8) { $bytes .= chr((int) bindec($byte)); }
+    }
+    return $bytes;
+}
+
+/** RFC 6238 code computed independently of the application's library. */
+function totp(string $secret, int $time): string
+{
+    $hash = hash_hmac('sha1', pack('J', intdiv($time, 30)), base32Decode($secret), true);
+    $offset = ord($hash[19]) & 0x0f;
+    $value = unpack('N', substr($hash, $offset, 4))[1] & 0x7fffffff;
+    return str_pad((string) ($value % 1000000), 6, '0', STR_PAD_LEFT);
+}
+
 /** Fetches a page as another browser that presents only the given cookies. */
 function withCookie(string $path, string $cookie): array
 {
@@ -389,6 +411,78 @@ try {
         && str_contains($auditPage['body'], 'Ajustes modificados')
         && str_contains($auditPage['body'], 'Usuario grace.hopper@example.test')
         && str_contains($auditPage['body'], 'Campos: apellido'), 'audit log lists account and settings changes');
+
+    $cookieFile = $memberCookieFile;
+    $security = http('GET', '/auth/security');
+    check($security['status'] === 200 && str_contains($security['body'], 'src="data:image/svg+xml;base64,'),
+        'security page offers a QR code to enroll an authenticator');
+    if (!preg_match('/data-mfa-secret>([^<]+)</', $security['body'], $match)) {
+        throw new RuntimeException('Two-factor secret absent from the security page');
+    }
+    $mfaSecret = str_replace(' ', '', html_entity_decode($match[1]));
+    $wrongEnrollment = http('POST', '/auth/security/enable', csrf($security['body']) + [
+        'auth_nonce' => hidden($security['body'], 'auth_nonce'), 'code' => totp($mfaSecret, time() - 3600),
+        'current_password' => 'SelfChosenPassword123!',
+    ]);
+    check(str_contains($wrongEnrollment['body'], 'El código no coincide')
+        && (int) $conn->query('SELECT COUNT(*) AS total FROM user_mfa WHERE user_id=' . $id)->fetch_assoc()['total'] === 0,
+        'a wrong code does not enable two-factor authentication');
+    $enrollmentCode = totp($mfaSecret, time());
+    $enrolled = http('POST', '/auth/security/enable', csrf($wrongEnrollment['body']) + [
+        'auth_nonce' => hidden($wrongEnrollment['body'], 'auth_nonce'), 'code' => $enrollmentCode,
+        'current_password' => 'SelfChosenPassword123!',
+    ]);
+    preg_match_all('~<li><code>([a-z0-9]{5}-[a-z0-9]{5})</code></li>~', $enrolled['body'], $recoveryCodes);
+    $mfaRow = $conn->query('SELECT secret FROM user_mfa WHERE user_id=' . $id)->fetch_assoc();
+    check(count($recoveryCodes[1]) === 10 && $mfaRow && str_starts_with($mfaRow['secret'], 'v2:')
+        && !str_contains($mfaRow['secret'], $mfaSecret), 'member enables two-factor authentication and gets recovery codes');
+    $signIn = static function (): array {
+        $page = http('GET', '/auth/profile');
+        if ($page['status'] === 200) {
+            http('POST', '/auth/logout', csrf($page['body']));
+        }
+        $form = http('GET', '/auth/login');
+        return http('POST', '/auth/login', csrf($form['body']) + [
+            'identity' => 'grace.hopper@example.test', 'password' => 'SelfChosenPassword123!',
+        ], true);
+    };
+    $firstStep = $signIn();
+    check(str_ends_with(json_decode($firstStep['body'], true)['redirect'] ?? '', '/auth/two_factor')
+        && redirectsToLogin(http('GET', '/auth/profile')), 'the password alone does not sign in a two-factor account');
+    $challenge = http('GET', '/auth/two_factor');
+    $replayed = http('POST', '/auth/two_factor', csrf($challenge['body']) + ['code' => $enrollmentCode], true);
+    check($replayed['status'] === 422, 'an authenticator code cannot be used twice');
+    $secondStep = http('POST', '/auth/two_factor', csrf($challenge['body']) + ['code' => totp($mfaSecret, time() + 30)], true);
+    check($secondStep['status'] === 200 && str_ends_with(json_decode($secondStep['body'], true)['redirect'] ?? '', '/auth/profile')
+        && http('GET', '/auth/profile')['status'] === 200, 'the second step signs the member in');
+    $signIn();
+    $challenge = http('GET', '/auth/two_factor');
+    $recovered = http('POST', '/auth/two_factor', csrf($challenge['body']) + ['code' => strtoupper($recoveryCodes[1][0])], true);
+    check($recovered['status'] === 200, 'a recovery code replaces the authenticator code');
+    $signIn();
+    $challenge = http('GET', '/auth/two_factor');
+    $reused = http('POST', '/auth/two_factor', csrf($challenge['body']) + ['code' => $recoveryCodes[1][0]], true);
+    check($reused['status'] === 422, 'each recovery code works once');
+
+    $cookieFile = $adminCookieFile;
+    check(str_contains(http('GET', '/auth?q=grace')['body'], '>2FA</span>'), 'the user directory shows two-factor accounts');
+    $settings = http('GET', '/auth/settings');
+    $requireMfa = $values;
+    $requireMfa['csrf_test_name'] = hidden($settings['body'], 'csrf_test_name');
+    $requireMfa['require_admin_mfa'] = '1';
+    $refused = http('POST', '/auth/settings', $requireMfa);
+    check($refused['status'] === 200 && str_contains($refused['body'], 'Activa tu verificación en dos pasos antes'),
+        'administrators must enable two-factor authentication before requiring it');
+    $editForm = http('GET', '/auth/edit_user/' . $id);
+    $resetMfa = http('POST', '/auth/reset_mfa/' . $id, csrf($editForm['body']) + ['auth_nonce' => hidden($editForm['body'], 'auth_nonce')]);
+    $mfaLeft = (int) $conn->query('SELECT COUNT(*) AS total FROM user_mfa WHERE user_id=' . $id)->fetch_assoc()['total'];
+    $mfaAudit = (int) $conn->query("SELECT COUNT(*) AS total FROM admin_audit WHERE action='user.mfa_reset' AND target_id=" . $id)->fetch_assoc()['total'];
+    check(redirected($resetMfa) && $mfaLeft === 0 && $mfaAudit === 1, 'administrators reset a lost authenticator with an audit entry');
+    $cookieFile = $memberCookieFile;
+    $afterReset = $signIn();
+    check($afterReset['status'] === 200 && str_ends_with(json_decode($afterReset['body'], true)['redirect'] ?? '', '/auth/profile'),
+        'after a reset the member signs in with the password alone');
+    $cookieFile = $adminCookieFile;
 
     $logo = tempnam(sys_get_temp_dir(), 'ci-logo-');
     $image = imagecreatetruecolor(16, 16);

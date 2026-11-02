@@ -39,14 +39,19 @@ El servidor de desarrollo solo sirve los tipos de archivo estatico permitidos de
 
 - `/auth/login`: acceso.
 - `/auth`: dashboard de usuarios y grupos para administradores.
+- `/auth/audit`: registro de cambios en cuentas, grupos y ajustes (solo nombres de campos, nunca valores).
+- `/auth/profile`: perfil de la cuenta con sesión iniciada; los miembros llegan aquí tras iniciar sesión.
+- `/auth/security`: verificación en dos pasos (TOTP) de la propia cuenta.
 - `/auth/settings`: registro, seguridad, SMTP y marca; los cambios se auditan.
 - `/auth/register`: registro publico desactivado por defecto; devuelve 404 mientras siga desactivado.
 - `/auth/forgot_password`: recuperacion de contraseña.
 - `/api/ping`: devuelve unicamente `{"status":"ok"}` en JSON.
 
-Para actualizar una instalación previa, haz una copia de la base y ejecuta `database/upgrade_auth_settings_20260923.sql` y después `database/upgrade_add_admin_audit_20261010.sql` y `database/upgrade_widen_login_attempts_20261010.sql`. Las migraciones conservan usuarios existentes y marcan el asistente como completado. Después cambia el document root a `public/`.
+Para actualizar una instalación previa, haz una copia de la base y ejecuta `database/upgrade_auth_settings_20260923.sql` y después `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql` y `database/upgrade_add_two_factor_20261102.sql`. Las migraciones conservan usuarios existentes y marcan el asistente como completado. Después cambia el document root a `public/`.
 
 Las sesiones quedan ligadas a la contraseña con la que se iniciaron: cualquier cambio de contraseña cierra las demás sesiones de esa cuenta. Tras desplegar esta versión, las sesiones abiertas previamente deben iniciar sesión una vez más.
+
+Cada usuario puede activar la verificación en dos pasos en `/auth/security` con una aplicación TOTP (Google Authenticator, Microsoft Authenticator, 1Password, Aegis…) y recibe 10 códigos de recuperación de un solo uso. Con ella activa, la contraseña sola no inicia sesión y «Recordarme» solo se guarda tras el segundo paso. Un administrador puede restablecerla desde la ficha del usuario (queda auditado) y exigirla a todos los administradores en `/auth/settings`.
 
 Además del bloqueo por cuenta, el inicio de sesión rechaza temporalmente una dirección IP que acumula 4 × «Intentos de acceso permitidos» fallos dentro del «Bloqueo temporal», aunque cada intento sea contra una cuenta distinta. Detrás de un proxy configura `TRUSTED_PROXIES`; si no, todos los visitantes comparten ese límite.
 

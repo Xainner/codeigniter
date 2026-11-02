@@ -98,9 +98,18 @@ class Auth extends MY_Controller
 			// check to see if the user is logging in
 			// check for "remember me"
 			$remember = $this->app_settings['remember_users'] && (bool) $this->input->post('remember');
+			// With two-factor authentication the remember-me cookie waits for the second step.
+			$this->load->model('User_mfa_model');
+			$two_factor = $this->User_mfa_model->enabled_for_identity($identity);
 
-			if ($this->ion_auth->login($identity, $password, $remember))
+			if ($this->ion_auth->login($identity, $password, $two_factor ? FALSE : $remember))
 			{
+				if ($two_factor)
+				{
+					$this->begin_two_factor($remember);
+					$this->two_factor_response(TRUE, 'Escribe el código de tu aplicación de autenticación.', 200, 'auth/two_factor');
+					return;
+				}
 				//if the login is successful
 				if ($is_ajax) {
 					$this->output->set_content_type('application/json', 'utf-8')->set_output(json_encode([
@@ -153,6 +162,84 @@ class Auth extends MY_Controller
 				$this->_render_page('auth' . DIRECTORY_SEPARATOR . 'login', $this->data);
 			}
 		}
+	}
+
+	/**
+	 * Second login step for accounts with two-factor authentication. The
+	 * password step leaves the session signed out with a short-lived marker.
+	 */
+	public function two_factor()
+	{
+		$pending = $this->session->userdata('mfa_pending');
+		if (!is_array($pending) || (int) ($pending['expires'] ?? 0) < time())
+		{
+			$this->session->unset_userdata('mfa_pending');
+			if (is_array($pending))
+			{
+				$this->session->set_flashdata('message', 'La verificación caducó. Inicia sesión de nuevo.');
+			}
+			redirect('auth/login');
+		}
+		if ($this->input->method(TRUE) !== 'POST')
+		{
+			$this->data['title'] = 'Verificación en dos pasos';
+			$this->data['message'] = $this->session->flashdata('message');
+			$this->_render_page('auth/two_factor', $this->data);
+			return;
+		}
+
+		$user_id = (int) $pending['user_id'];
+		$this->load->model(['User_mfa_model', 'Rate_limiter_model']);
+		if (!$this->Rate_limiter_model->allow('mfa-user', (string) $user_id, 5, 900))
+		{
+			$this->session->unset_userdata('mfa_pending');
+			$this->two_factor_response(FALSE, 'Demasiados códigos incorrectos. Espera unos minutos e inicia sesión de nuevo.', 429, 'auth/login');
+			return;
+		}
+		if (!$this->User_mfa_model->verify($user_id, (string) $this->input->post('code')))
+		{
+			$this->two_factor_response(FALSE, 'El código no es válido. Usa el código actual de tu aplicación o un código de recuperación.', 422, 'auth/two_factor');
+			return;
+		}
+		$user = $this->db->select('id, email, last_login')->get_where('users', ['id' => $user_id, 'active' => 1])->row();
+		$this->session->unset_userdata('mfa_pending');
+		if (!$user)
+		{
+			$this->two_factor_response(FALSE, 'No se ha podido iniciar sesión', 401, 'auth/login');
+			return;
+		}
+		$this->ion_auth->set_session($user);
+		if (!empty($pending['remember']) && $this->app_settings['remember_users'])
+		{
+			$this->ion_auth->remember_user($user->email);
+		}
+		$this->two_factor_response(TRUE, 'Sesión iniciada.', 200, $this->post_login_target());
+	}
+
+	/** The password was right: sign the session out again until the second step succeeds. */
+	private function begin_two_factor($remember)
+	{
+		$user_id = (int) $this->session->userdata('user_id');
+		$this->session->unset_userdata([
+			'identity', $this->config->item('identity', 'ion_auth'), 'email', 'user_id',
+			'old_last_login', 'last_check', 'ion_auth_session_hash', 'auth_password_fp',
+		]);
+		$this->session->set_userdata('mfa_pending', ['user_id' => $user_id, 'remember' => (bool) $remember, 'expires' => time() + 300]);
+	}
+
+	private function two_factor_response($success, $message, $status, $target)
+	{
+		if ($this->input->is_ajax_request())
+		{
+			$this->output->set_status_header($status)->set_content_type('application/json', 'utf-8')
+				->set_output(json_encode([
+					'success' => $success, 'message' => $message,
+					'redirect' => $success ? site_url($target) : NULL,
+				], JSON_UNESCAPED_UNICODE));
+			return;
+		}
+		$this->session->set_flashdata('message', $message);
+		redirect($target);
 	}
 
 	/**

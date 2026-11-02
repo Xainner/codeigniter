@@ -24,8 +24,10 @@ class Admin_user_model extends CI_Model
     {
         $this->search($query);
         // Only what the directory shows: never load password hashes or tokens.
-        $users = $this->db->select('id, email, first_name, last_name, active, last_login')
-            ->order_by('id', 'DESC')->limit($limit, $offset)->get('users')->result();
+        $users = $this->db->select('users.id, users.email, users.first_name, users.last_name, users.active, users.last_login,'
+            . ' user_mfa.enabled_at AS mfa_enabled_at')
+            ->join('user_mfa', 'user_mfa.user_id = users.id', 'left')
+            ->order_by('users.id', 'DESC')->limit($limit, $offset)->get('users')->result();
         if (!$users) {
             return [];
         }

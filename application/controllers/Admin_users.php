@@ -7,7 +7,7 @@ class Admin_users extends MY_Controller
         parent::__construct();
         $this->load_auth();
         $this->load->library('form_validation');
-        $this->load->model('Admin_audit_model');
+        $this->load->model(['Admin_audit_model', 'User_mfa_model']);
         $this->load->helper(['url', 'form']);
     }
 
@@ -199,6 +199,28 @@ class Admin_users extends MY_Controller
         redirect('auth');
     }
 
+    /** Lets an administrator recover a user who lost their authenticator. */
+    public function reset_mfa($id)
+    {
+        $this->require_admin();
+        $this->require_post_nonce();
+        $id = (int) $id;
+        $actor = (int) $this->ion_auth->get_user_id();
+        if ($id === $actor) {
+            show_error('Gestiona tu propia verificación en dos pasos desde Seguridad.', 403);
+            return;
+        }
+        if (!$this->ion_auth->user($id)->row()) {
+            show_404();
+            return;
+        }
+        if ($this->User_mfa_model->enabled($id) && $this->User_mfa_model->disable($id)) {
+            $this->Admin_audit_model->record($actor, 'user.mfa_reset', 'user', $id);
+            $this->session->set_flashdata('message', 'Verificación en dos pasos restablecida. La persona podrá configurarla de nuevo.');
+        }
+        redirect('auth/edit_user/' . $id);
+    }
+
     private function validation_rules($creating, $id = 0)
     {
         $this->form_validation->set_rules('first_name', 'Nombre', 'trim|required|max_length[50]');
@@ -266,7 +288,8 @@ class Admin_users extends MY_Controller
             'active_nav' => $own_account ? 'profile' : 'users',
             'groups' => $is_admin ? $this->ion_auth->groups()->result() : [],
             'selected_group_ids' => $selected,
-            'errors' => $errors, 'message' => '', 'settings' => $this->app_settings,
+            'errors' => $errors, 'message' => (string) $this->session->flashdata('message'), 'settings' => $this->app_settings,
+            'mfa_enabled' => $mode === 'edit' && $user ? $this->User_mfa_model->enabled($user->id) : FALSE,
             'nonce_name' => 'auth_nonce', 'nonce_hash' => $this->_get_csrf_nonce()['auth_nonce'],
         ] + $this->csrf_data());
     }

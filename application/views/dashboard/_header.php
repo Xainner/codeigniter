@@ -46,6 +46,7 @@ $nav_link = static function ($key, $label, $icon, $url) use ($active_nav) {
             <?php echo $nav_link('settings', 'Configuración', '⚙', site_url('auth/settings')); ?>
             <?php endif; ?>
             <?php echo $nav_link('profile', 'Mi perfil', '◉', site_url('auth/profile')); ?>
+            <?php echo $nav_link('security', 'Seguridad', '◈', site_url('auth/security')); ?>
         </nav>
         <div class="sidebar-foot">
             <span class="sidebar-foot-label"><?php echo $show_admin_nav ? 'Administración' : 'Cuenta'; ?></span>

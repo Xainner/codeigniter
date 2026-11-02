@@ -71,5 +71,19 @@ $this->load->view('dashboard/_header', [
         <?php endif; ?>
         <div class="form-actions"><a class="button button-secondary" href="<?php echo html_escape($back_url); ?>">Cancelar</a><button class="button button-primary" type="submit"><?php echo $editing ? 'Guardar cambios' : 'Crear usuario'; ?></button></div>
     </form>
+    <?php if ($editing): ?>
+    <section class="test-panel" aria-labelledby="user-mfa-heading">
+        <div><h2 id="user-mfa-heading">Verificación en dos pasos</h2><p><?php echo !empty($mfa_enabled) ? 'Activada para esta cuenta.' : 'Desactivada para esta cuenta.'; ?></p></div>
+        <?php if ($own_account): ?>
+        <a class="button button-secondary" href="<?php echo html_escape(site_url('auth/security')); ?>">Gestionar</a>
+        <?php elseif ($is_admin && !empty($mfa_enabled)): ?>
+        <form action="<?php echo html_escape(site_url('auth/reset_mfa/' . $user_id)); ?>" method="post" data-confirm="¿Restablecer la verificación en dos pasos de esta cuenta?">
+            <input type="hidden" name="<?php echo html_escape((string) ($csrf_name ?? '')); ?>" value="<?php echo html_escape((string) ($csrf_hash ?? '')); ?>">
+            <input type="hidden" name="<?php echo html_escape((string) ($nonce_name ?? '')); ?>" value="<?php echo html_escape((string) ($nonce_hash ?? '')); ?>">
+            <button class="button button-secondary" type="submit">Restablecer</button>
+        </form>
+        <?php endif; ?>
+    </section>
+    <?php endif; ?>
 </div>
 <?php $this->load->view('dashboard/_footer'); ?>

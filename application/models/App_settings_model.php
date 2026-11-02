@@ -10,6 +10,7 @@ class App_settings_model extends CI_Model
         'public_registration' => '0',
         'email_activation' => '1',
         'remember_users' => '0',
+        'require_admin_mfa' => '0',
         'min_password_length' => '12',
         'maximum_login_attempts' => '5',
         'lockout_time' => '900',
@@ -37,7 +38,7 @@ class App_settings_model extends CI_Model
                 }
             }
         }
-        foreach (['public_registration', 'email_activation', 'remember_users', 'smtp_verified'] as $name) {
+        foreach (['public_registration', 'email_activation', 'remember_users', 'require_admin_mfa', 'smtp_verified'] as $name) {
             $settings[$name] = $settings[$name] === '1';
         }
         if ($settings['smtp_verified'] && $settings['smtp_password'] !== '' && $this->smtp_password() === '') {

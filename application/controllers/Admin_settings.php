@@ -97,7 +97,7 @@ class Admin_settings extends MY_Controller
     {
         $post = $this->input->post(NULL, FALSE);
         $values = [];
-        foreach (['public_registration', 'email_activation', 'remember_users'] as $name) {
+        foreach (['public_registration', 'email_activation', 'remember_users', 'require_admin_mfa'] as $name) {
             $values[$name] = isset($post[$name]) && $post[$name] === '1' ? '1' : '0';
         }
         foreach (['min_password_length' => [12, 128], 'maximum_login_attempts' => [3, 10],
@@ -146,6 +146,12 @@ class Admin_settings extends MY_Controller
         }
         if ($password !== '') {
             $values['smtp_verified'] = '0';
+        }
+        if ($values['require_admin_mfa'] === '1' && !$current['require_admin_mfa']) {
+            $this->load->model('User_mfa_model');
+            if (!$this->User_mfa_model->enabled($this->ion_auth->get_user_id())) {
+                $errors[] = 'Activa tu verificación en dos pasos antes de exigirla a los administradores.';
+            }
         }
         if ($values['public_registration'] === '1' && $values['email_activation'] === '1'
             && (!$current['smtp_configured'] || isset($values['smtp_verified']))) {

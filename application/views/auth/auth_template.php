@@ -53,6 +53,17 @@
                 'loading' => 'Actualizando...',
                 'ajax' => FALSE,
             ],
+            'two_factor' => [
+                'eyebrow' => 'Verificación',
+                'heading' => 'Verificación en dos pasos',
+                'description' => 'Escribe el código de seis dígitos de tu aplicación de autenticación o uno de tus códigos de recuperación.',
+                'form_id' => 'twoFactorForm',
+                'endpoint' => site_url('auth/two_factor'),
+                'success_title' => 'Sesión iniciada',
+                'submit' => 'Verificar',
+                'loading' => 'Verificando...',
+                'ajax' => TRUE,
+            ],
             'change_password' => [
                 'eyebrow' => 'Seguridad',
                 'heading' => 'Cambiar contraseña',
@@ -204,6 +215,19 @@
 
                     <div class="auth-links">
                         <a href="<?php echo base_url('auth/login'); ?>">Volver a iniciar sesión</a>
+                    </div>
+                <?php elseif ($auth_variant === 'two_factor'): ?>
+                    <form class="auth-form" id="twoFactorForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="true">
+                        <input type="hidden" name="<?php echo html_escape($this->security->get_csrf_token_name()); ?>" value="<?php echo html_escape($this->security->get_csrf_hash()); ?>">
+                        <div class="form-group">
+                            <label class="form-label" for="code">Código de verificación</label>
+                            <input type="text" class="form-control" id="code" name="code" placeholder="123456" autocomplete="one-time-code" maxlength="16" required autofocus>
+                        </div>
+                        <button type="submit" class="auth-button" data-submit-button data-loading-label="<?php echo html_escape($view['loading']); ?>"><?php echo html_escape($view['submit']); ?></button>
+                    </form>
+
+                    <div class="auth-links">
+                        <a href="<?php echo html_escape(site_url('auth/login')); ?>">Volver a iniciar sesión</a>
                     </div>
                 <?php elseif ($auth_variant === 'change_password'): ?>
                     <form class="auth-form" id="changePasswordForm" action="<?php echo html_escape($view['endpoint']); ?>" method="post" data-ajax-form="false">

@@ -121,6 +121,13 @@ class MY_Controller extends CI_Controller
         if (!$this->ion_auth->is_admin()) {
             show_error('Acceso denegado', 403);
         }
+        if ($this->app_settings['require_admin_mfa']) {
+            $this->load->model('User_mfa_model');
+            if (!$this->User_mfa_model->enabled($this->ion_auth->get_user_id())) {
+                $this->session->set_flashdata('message', 'Activa la verificación en dos pasos para administrar la aplicación.');
+                redirect('auth/security');
+            }
+        }
     }
 
     /** Where to go after signing in: the page that asked for it, or the user's own start page. */
