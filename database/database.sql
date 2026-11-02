@@ -1,3 +1,7 @@
+-- Base schema for a new installation. It drops and recreates every table it
+-- defines, so importing it into an existing database deletes all its data.
+-- Upgrade existing databases with the upgrade_*.sql scripts instead.
+
 -- Drop the join table first so this script can also rebuild an existing schema.
 DROP TABLE IF EXISTS `users_groups`;
 DROP TABLE IF EXISTS `groups`;
