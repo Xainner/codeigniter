@@ -43,8 +43,12 @@ jobs:
       - run: php -d error_reporting=E_ALL tests/phpmailer_transport.php
 
   integration:
-    name: Application integration
+    name: Application integration (${{ matrix.session }} sessions)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        session: ['files', 'database']
     services:
       mariadb:
         image: mariadb:11.4
@@ -69,6 +73,7 @@ jobs:
       DB_USER: ci
       DB_PASS: ci
       TEST_BASE_URL: http://127.0.0.1:8011
+      SESSION_DRIVER: ${{ matrix.session }}
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2

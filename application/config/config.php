@@ -384,11 +384,14 @@ $config['encryption_key'] = getenv('APP_KEY');
 | except for 'cookie_prefix' and 'cookie_httponly', which are ignored here.
 |
 */
-$config['sess_driver'] = 'files';
+// Files suit a single server. With several application servers use "database"
+// (table ci_sessions) or "redis" (SESSION_SAVE_PATH such as tcp://10.0.0.5:6379).
+$config['sess_driver'] = getenv('SESSION_DRIVER') ?: 'files';
 $config['sess_cookie_name'] = 'ci_session';
 $config['sess_samesite'] = 'Lax';
 $config['sess_expiration'] = 7200;
-$config['sess_save_path'] = APPPATH.'cache';
+$config['sess_save_path'] = getenv('SESSION_SAVE_PATH')
+	?: ($config['sess_driver'] === 'database' ? 'ci_sessions' : ($config['sess_driver'] === 'files' ? APPPATH.'cache' : ''));
 $config['sess_match_ip'] = FALSE;
 $config['sess_time_to_update'] = 300;
 $config['sess_regenerate_destroy'] = FALSE;

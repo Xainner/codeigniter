@@ -22,8 +22,9 @@ php -S localhost:8000 -t public public/router.php
 ```
 
 1. Set `APP_KEY` (64 hexadecimal characters), `APP_URL`, `CI_ENV`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASS` in the PHP process environment. `APP_KEY` is required even in development.
-   Optional: `TRUSTED_PROXIES` (comma-separated proxy IPs/CIDRs in front of PHP) and `LOG_THRESHOLD`
-   (defaults to `1`, errors only; `0` disables logging).
+   Optional: `TRUSTED_PROXIES` (comma-separated proxy IPs/CIDRs in front of PHP), `LOG_THRESHOLD`
+   (defaults to `1`, errors only; `0` disables logging), `SESSION_DRIVER` (`files` by default,
+   `database` uses `ci_sessions`, `redis` needs `SESSION_SAVE_PATH`) and `SESSION_SAVE_PATH`.
 2. Import `database/database.sql` into an empty database. Set a random `APP_SETUP_TOKEN` of at least 32 characters, then create the first administrator at `/auth/setup`. The wizard permanently closes after completion.
 3. Configure and test SMTP from `/auth/settings`. Public registration starts disabled.
 
@@ -180,10 +181,12 @@ extend `Api_controller`; every method requires an API key unless listed in `$pub
 - Use `database/upgrade_auth_settings_20260923.sql` for existing databases. It marks setup complete
   when users already exist, so existing installations cannot reopen the setup wizard. Then apply
   `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql`,
-  `database/upgrade_add_two_factor_20261102.sql` and `database/upgrade_add_api_keys_20261102.sql`.
+  `database/upgrade_add_two_factor_20261102.sql`, `database/upgrade_add_api_keys_20261102.sql`
+  and `database/upgrade_add_sessions_20261102.sql`.
 - IonAuth's `activate($id, $code)` compares the id strictly with the string mysqli returns. Resolve the
   user with `get_user_by_activation_code()` and activate by the returned id (see `Auth::activate()`).
 - IonAuth language packs live in `application/language/english|spanish`; the dashboard and setup copy
   is Spanish. Keep new dashboard text consistent and escape it in views.
 - `.github/workflows/ci.yml` runs lint and the smoke suites on PHP 8.4/8.5/8.6 and the integration
-  suite on PHP 8.4 with MariaDB (including dashboard query counts).
+  suite on PHP 8.4 with MariaDB, once with file sessions and once with database sessions (including
+  dashboard query counts).

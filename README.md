@@ -23,6 +23,8 @@ Plantilla de CodeIgniter 3 (fork PocketArc) con IonAuth, PHPMailer y un dashboar
 | `DB_NAME`, `DB_USER`, `DB_PASS` | Nombre, usuario y contraseña de la base de datos. |
 | `APP_SETUP_TOKEN` | Clave del asistente inicial; se puede retirar después de crear el primer administrador. Nunca se incluye en la URL. |
 | `TRUSTED_PROXIES` | Opcional. IPs o rangos CIDR (separados por comas) de los proxies o balanceadores delante de PHP. Sin ella, detrás de un proxy todos los visitantes comparten IP y los bloqueos por IP se vuelven globales. |
+| `SESSION_DRIVER` | Opcional. `files` (por defecto, en `application/cache/`), `database` (tabla `ci_sessions`) o `redis`. Con varios servidores de aplicación usa `database` o `redis`. |
+| `SESSION_SAVE_PATH` | Opcional. Para `redis`, la conexión (por ejemplo `tcp://10.0.0.5:6379?auth=...`); para los demás drivers sustituye la ruta o la tabla por defecto. |
 | `LOG_THRESHOLD` | Opcional. Nivel de log de CodeIgniter; por defecto `1` (solo errores) en `application/logs/`. `0` lo desactiva. |
 
 4. Sirve `public/` como document root y abre `/auth/setup` para crear el primer administrador. El asistente exige una base sin usuarios y se cierra permanentemente al completarse. Después configura y prueba SMTP en `/auth/settings`. Para desarrollo local:
@@ -51,7 +53,7 @@ El servidor de desarrollo solo sirve los tipos de archivo estatico permitidos de
 
 Los endpoints de `api/` se autentican con la cabecera `X-API-Key` y nunca con la sesión del navegador, por eso quedan fuera de la comprobación CSRF. Para crear endpoints nuevos extiende `Api_controller` (`application/core/Api_controller.php`) y declara en `$public_methods` solo los que no deban pedir clave.
 
-Para actualizar una instalación previa, haz una copia de la base y ejecuta `database/upgrade_auth_settings_20260923.sql` y después `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql`, `database/upgrade_add_two_factor_20261102.sql` y `database/upgrade_add_api_keys_20261102.sql`. Las migraciones conservan usuarios existentes y marcan el asistente como completado. Después cambia el document root a `public/`.
+Para actualizar una instalación previa, haz una copia de la base y ejecuta `database/upgrade_auth_settings_20260923.sql` y después `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql`, `database/upgrade_add_two_factor_20261102.sql`, `database/upgrade_add_api_keys_20261102.sql` y `database/upgrade_add_sessions_20261102.sql`. Las migraciones conservan usuarios existentes y marcan el asistente como completado. Después cambia el document root a `public/`.
 
 Las sesiones quedan ligadas a la contraseña con la que se iniciaron: cualquier cambio de contraseña cierra las demás sesiones de esa cuenta. Tras desplegar esta versión, las sesiones abiertas previamente deben iniciar sesión una vez más.
 
