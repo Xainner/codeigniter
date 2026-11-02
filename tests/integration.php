@@ -457,6 +457,15 @@ try {
             'recovery uses SMTP and gives uniform public responses');
         check(array_diff(capturedMessages(), $before) === [],
             'unknown recovery addresses send no mail');
+        $conn->query("UPDATE users SET active=0 WHERE email='fixture1@example.test'");
+        $forgot = http('GET', '/auth/forgot_password');
+        $before = capturedMessages();
+        $inactive = http('POST', '/auth/forgot_password', csrf($forgot['body']) + [
+            'identity' => 'fixture1@example.test',
+        ], true);
+        check($inactive['status'] === 200 && $inactive['body'] === $unknown['body']
+            && array_diff(capturedMessages(), $before) === [],
+            'inactive accounts get the uniform recovery response and no mail');
         $recoveryBody = quoted_printable_decode($knownMail['body']);
         if (!preg_match('~https?://[^"\s<>]+/auth/reset_password/[^"\s<>]+~', $recoveryBody, $match)) {
             throw new RuntimeException('Recovery link absent from captured mail');

@@ -247,7 +247,9 @@ class Auth extends MY_Controller
 		}
 
 		$user = $this->ion_auth->where('email', $identity)->users()->row();
-		$sent = $user ? $this->ion_auth->forgotten_password($identity) : $this->recovery_transport_probe();
+		// Ion Auth refuses inactive accounts; answer them like unknown addresses.
+		$sent = $user && (int) $user->active === 1
+			? $this->ion_auth->forgotten_password($identity) : $this->recovery_transport_probe();
 		if (!$sent) {
 			log_message('error', 'Password recovery transport failed');
 			$this->recovery_response(FALSE, 'La recuperación no está disponible temporalmente.', 503);
