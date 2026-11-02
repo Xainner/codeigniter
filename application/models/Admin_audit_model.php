@@ -19,4 +19,63 @@ class Admin_audit_model extends CI_Model
         }
         return $recorded;
     }
+
+    /** Number of administration and settings entries together. */
+    public function count_entries()
+    {
+        return (int) $this->db->count_all('admin_audit') + (int) $this->db->count_all('settings_audit');
+    }
+
+    /**
+     * Administration and settings entries, newest first, with the names of the
+     * people and groups involved resolved in two extra queries.
+     */
+    public function page($limit, $offset)
+    {
+        $entries = $this->db->query(
+            "SELECT 'admin' AS source, id, actor_user_id, action, target_type, target_id, details, created_at FROM admin_audit"
+            . " UNION ALL SELECT 'settings', id, actor_user_id, 'settings.update', 'settings', 0, changed_keys, created_at FROM settings_audit"
+            . ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?',
+            [(int) $limit, (int) $offset]
+        )->result();
+
+        $user_ids = [];
+        $group_ids = [];
+        foreach ($entries as $entry) {
+            $details = json_decode((string) $entry->details, TRUE);
+            $details = is_array($details) ? $details : [];
+            $entry->fields = $entry->source === 'admin' ? array_values(array_filter((array) ($details['fields'] ?? []), 'is_string')) : [];
+            $entry->setting_keys = $entry->source === 'settings' ? array_values(array_filter($details, 'is_string')) : [];
+            $entry->group_ids = $entry->source === 'admin' ? array_map('intval', (array) ($details['groups'] ?? [])) : [];
+            $user_ids[] = (int) $entry->actor_user_id;
+            if ($entry->target_type === 'user') {
+                $user_ids[] = (int) $entry->target_id;
+            } elseif ($entry->target_type === 'group') {
+                $group_ids[] = (int) $entry->target_id;
+            }
+            array_push($group_ids, ...$entry->group_ids);
+        }
+        $emails = $this->names('users', 'email', $user_ids);
+        $groups = $this->names('groups', 'name', $group_ids);
+
+        foreach ($entries as $entry) {
+            $entry->actor_email = $emails[(int) $entry->actor_user_id] ?? NULL;
+            $entry->target_label = $entry->target_type === 'user' ? ($emails[(int) $entry->target_id] ?? NULL)
+                : ($entry->target_type === 'group' ? ($groups[(int) $entry->target_id] ?? NULL) : NULL);
+            $entry->group_names = array_map(static function ($id) use ($groups) {
+                return $groups[$id] ?? '#' . $id;
+            }, $entry->group_ids);
+        }
+        return $entries;
+    }
+
+    private function names($table, $column, array $ids)
+    {
+        $ids = array_values(array_unique(array_filter($ids)));
+        if (!$ids) {
+            return [];
+        }
+        $rows = $this->db->select('id, ' . $column)->where_in('id', $ids)->get($table)->result_array();
+        return array_column($rows, $column, 'id');
+    }
 }

@@ -381,6 +381,11 @@ try {
     $page = http('GET', '/auth?q=ada');
     check(http('POST', '/auth/deactivate/1', csrf($page['body']) + ['auth_nonce' => hidden($page['body'], 'auth_nonce')])['status'] === 403,
         'admin cannot deactivate own account');
+    $auditPage = http('GET', '/auth/audit');
+    check($auditPage['status'] === 200 && str_contains($auditPage['body'], 'Usuario desactivado')
+        && str_contains($auditPage['body'], 'Ajustes modificados')
+        && str_contains($auditPage['body'], 'Usuario grace.hopper@example.test')
+        && str_contains($auditPage['body'], 'Campos: apellido'), 'audit log lists account and settings changes');
 
     $logo = tempnam(sys_get_temp_dir(), 'ci-logo-');
     $image = imagecreatetruecolor(16, 16);
@@ -529,6 +534,7 @@ try {
     $profile = http('GET', '/auth/profile');
     check($profile['status'] === 200 && str_contains($profile['body'], 'Mi perfil')
         && str_contains($profile['body'], 'value="public@example.test"'), 'profile page shows the signed-in member');
+    check(http('GET', '/auth/audit')['status'] === 403, 'member cannot read the audit log');
     check(http('GET', '/auth/settings')['status'] === 403, 'member cannot access settings');
     check(http('GET', '/auth')['status'] !== 200, 'member cannot access admin dashboard');
     $changeForm = http('GET', '/auth/change_password');

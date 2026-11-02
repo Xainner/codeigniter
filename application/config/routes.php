@@ -56,6 +56,7 @@ $route['auth/settings/test-email'] = 'admin_settings/test_email';
 $route['auth/create_user'] = 'admin_users/create';
 $route['auth/edit_user/(:num)'] = 'admin_users/edit/$1';
 $route['auth/profile'] = 'admin_users/profile';
+$route['auth/audit'] = 'admin_audit/index';
 $route['auth/activate/(:num)'] = 'admin_users/activate/$1';
 $route['auth/deactivate/(:num)'] = 'admin_users/deactivate/$1';
 $route['auth/create_group'] = 'admin_groups/create';
