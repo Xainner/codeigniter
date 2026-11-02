@@ -25,6 +25,7 @@ Plantilla de CodeIgniter 3 (fork PocketArc) con IonAuth, PHPMailer y un dashboar
 | `TRUSTED_PROXIES` | Opcional. IPs o rangos CIDR (separados por comas) de los proxies o balanceadores delante de PHP. Sin ella, detrás de un proxy todos los visitantes comparten IP y los bloqueos por IP se vuelven globales. |
 | `SESSION_DRIVER` | Opcional. `files` (por defecto, en `application/cache/`), `database` (tabla `ci_sessions`) o `redis`. Con varios servidores de aplicación usa `database` o `redis`. |
 | `SESSION_SAVE_PATH` | Opcional. Para `redis`, la conexión (por ejemplo `tcp://10.0.0.5:6379?auth=...`); para los demás drivers sustituye la ruta o la tabla por defecto. |
+| `SENTRY_DSN` | Opcional. Envía errores y excepciones no capturadas a Sentry. `SENTRY_ENVIRONMENT` (por defecto `CI_ENV`), `SENTRY_RELEASE` y `SENTRY_TRACES_SAMPLE_RATE` (por defecto `0`) lo ajustan. Nunca se envían cookies, IPs, cuerpos de petición ni la cabecera `X-API-Key`. |
 | `LOG_THRESHOLD` | Opcional. Nivel de log de CodeIgniter; por defecto `1` (solo errores) en `application/logs/`. `0` lo desactiva. |
 
 4. Sirve `public/` como document root y abre `/auth/setup` para crear el primer administrador. El asistente exige una base sin usuarios y se cierra permanentemente al completarse. Después configura y prueba SMTP en `/auth/settings`. Para desarrollo local:

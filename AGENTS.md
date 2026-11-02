@@ -7,6 +7,7 @@ Project rules for AI agents and developers.
 - **Framework**: CodeIgniter (`pocketarc/codeigniter` 3.4.7) installed by Composer in `vendor/pocketarc/codeigniter/system/`.
 - **Auth**: IonAuth in `application/third_party/ion_auth` (registered as a package in `autoload.php`).
 - **PHP**: >= 8.4 with `curl`, `openssl`, `gd`, `mbstring`, `mysqli` and `xml`.
+- **Error tracking**: `sentry/sentry`, active only when `SENTRY_DSN` is set, started by the `pre_system` hook `application/hooks/Error_tracking.php`.
 - **2FA**: TOTP via `spomky-labs/otphp` with QR codes from `bacon/bacon-qr-code`, wrapped by
   `application/libraries/Two_factor.php`.
 - **Email**: PHPMailer 7.1 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API). The web entry point requires Composer dependencies.
@@ -25,6 +26,7 @@ php -S localhost:8000 -t public public/router.php
    Optional: `TRUSTED_PROXIES` (comma-separated proxy IPs/CIDRs in front of PHP), `LOG_THRESHOLD`
    (defaults to `1`, errors only; `0` disables logging), `SESSION_DRIVER` (`files` by default,
    `database` uses `ci_sessions`, `redis` needs `SESSION_SAVE_PATH`) and `SESSION_SAVE_PATH`.
+   Error tracking: `SENTRY_DSN`, with `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE` and `SENTRY_TRACES_SAMPLE_RATE`.
 2. Import `database/database.sql` into an empty database. Set a random `APP_SETUP_TOKEN` of at least 32 characters, then create the first administrator at `/auth/setup`. The wizard permanently closes after completion.
 3. Configure and test SMTP from `/auth/settings`. Public registration starts disabled.
 
@@ -42,6 +44,7 @@ application/
                  Two_factor (TOTP and recovery codes), Password_policy (zxcvbn strength check)
   core/          MY_Controller (settings, load_auth(), shared auth helpers), MY_Exceptions (HTML error escaping),
                  Api_controller (API key authentication for REST controllers)
+  hooks/         Error_tracking (Sentry, pre_system hook)
   config/        database.php, email.php, rest.php, routes.php, config.php (subclass_prefix)
   views/         auth/, dashboard/, errors/, welcome_message.php
   language/      english/ and spanish/ packs for auth, ion_auth, rest; spanish/ also carries the CI3
