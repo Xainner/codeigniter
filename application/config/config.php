@@ -412,7 +412,8 @@ $config['sess_regenerate_destroy'] = FALSE;
 $config['cookie_prefix']	= '';
 $config['cookie_domain']	= '';
 $config['cookie_path']		= '/';
-$config['cookie_secure']	= (ENVIRONMENT === 'production');
+// Any HTTPS deployment gets secure cookies, not only the production environment.
+$config['cookie_secure']	= ENVIRONMENT === 'production' || stripos((string) getenv('APP_URL'), 'https://') === 0;
 $config['cookie_httponly'] 	= TRUE;
 $config['cookie_samesite'] 	= 'Lax';
 

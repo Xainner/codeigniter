@@ -82,6 +82,11 @@
 	// Views load only same-origin scripts. Inline styles stay allowed for the
 	// configurable brand colour and the framework error pages.
 	header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+	// Browsers only honour HSTS over HTTPS; web servers other than Apache never sent it.
+	if (stripos((string) getenv('APP_URL'), 'https://') === 0)
+	{
+		header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+	}
 	$composer_autoload = dirname(__DIR__).'/vendor/autoload.php';
 	if ( ! is_file($composer_autoload))
 	{
