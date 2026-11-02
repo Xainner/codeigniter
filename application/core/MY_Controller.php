@@ -48,11 +48,22 @@ class MY_Controller extends CI_Controller
         $this->config->set_item('ion_auth', $ion);
         $this->load->library('ion_auth');
 
+        // Ion Auth regenerates the session id only after storing the login and
+        // keeps the old id alive with that data, so an id planted before login
+        // would end up signed in. Replace it before anything is stored.
+        $this->ion_auth->set_hook('pre_set_session', 'session_fixation', $this, '_discard_pre_login_session', []);
+
         // Ion Auth only rechecks that the account is active. Binding each
         // session to the password hash also ends other sessions after any
         // password change (profile edit, reset, change or direct update).
         $this->ion_auth->set_hook('post_set_session', 'password_binding', $this, '_bind_session_password', []);
         $this->ion_auth->set_hook('logged_in', 'password_binding', $this, '_check_session_password', []);
+    }
+
+    /** Ion Auth hook: never authenticates the session id that existed before login. */
+    public function _discard_pre_login_session()
+    {
+        $this->session->sess_regenerate(TRUE);
     }
 
     /** Ion Auth hook: remembers which password hash authenticated this session. */

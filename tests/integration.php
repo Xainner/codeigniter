@@ -79,6 +79,36 @@ function db(): mysqli
     return $conn;
 }
 
+function cookieValue(string $name): string
+{
+    global $cookieFile;
+    foreach (file($cookieFile, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
+        $fields = explode("\t", $line);
+        if (count($fields) === 7 && $fields[5] === $name) {
+            return $fields[6];
+        }
+    }
+    throw new RuntimeException("Missing cookie $name");
+}
+
+/** Fetches a page as another browser that presents only the given cookies. */
+function withCookie(string $path, string $cookie): array
+{
+    global $base;
+    $curl = curl_init($base . $path);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_COOKIE => $cookie,
+    ]);
+    $body = curl_exec($curl);
+    if ($body === false) {
+        throw new RuntimeException('HTTP request failed: ' . curl_error($curl));
+    }
+    return ['status' => curl_getinfo($curl, CURLINFO_RESPONSE_CODE), 'body' => $body];
+}
+
 function countUsers(): int
 {
     $result = db()->query('SELECT COUNT(*) AS total FROM users');
@@ -144,12 +174,15 @@ try {
     check($badLogin['status'] === 401
         && (json_decode($badLogin['body'], true)['message'] ?? '') === 'No se ha podido iniciar sesión',
         'authentication messages use the Spanish language pack');
+    $preLoginSession = cookieValue('ci_session');
     $loginResult = http('POST', '/auth/login', csrf($login['body']) + [
         'identity' => 'ada@example.test', 'password' => 'VeryStrongPassword123!',
     ], true);
     $loginJson = json_decode($loginResult['body'], true);
     check($loginResult['status'] === 200 && ($loginJson['success'] ?? false)
         && str_contains($loginJson['redirect'] ?? '', '/auth'), 'admin login redirects to dashboard');
+    check(!str_contains(withCookie('/auth', 'ci_session=' . $preLoginSession)['body'], 'Usuarios y grupos'),
+        'login never authenticates the pre-login session id');
 
     $dashboard = http('GET', '/auth');
     check($dashboard['status'] === 200 && str_contains($dashboard['body'], 'Usuarios y grupos'), 'dashboard renders');

@@ -122,6 +122,8 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
   password change ends the user's other sessions. Changing one's own email or password requires the
   current password. IonAuth's `logout()` does not revoke the remember-me token; use
   `revoke_remember_token()` alongside it.
+- `load_auth()` also regenerates the session id, destroying the old one, before IonAuth stores a
+  login: IonAuth's own `sess_regenerate(FALSE)` would leave a pre-login (possibly planted) id signed in.
 - Account and group administration is recorded in `admin_audit` (field names and ids only, never
   personal values or secrets); settings changes go to `settings_audit`.
 - `public/index.php` sends a Content-Security-Policy with `script-src 'self'`: keep JavaScript in
