@@ -175,7 +175,11 @@ extend `Api_controller`; every method requires an API key unless listed in `$pub
 
 ## Testing
 
-- Before opening a PR, lint every changed PHP file: `php -l path/to/file.php`.
+- Before opening a PR, lint every changed PHP file (`php -l path/to/file.php`) and run
+  `composer lint:style`, `composer analyse` and `composer test:unit`. Indent with tabs
+  (`composer fix:style` rewrites spaces); list formatting-only commits in `.git-blame-ignore-revs`.
+- Unit tests live in `tests/unit/` (PHPUnit, no framework boot); HTTP flows belong in
+  `tests/integration.php`, which CI runs with file and with database sessions.
 - Smoke-test the affected flow (e.g. login / register / forgot password via `php -S localhost:8000 -t public public/router.php`)
   and leave evidence in the PR description.
 - When changing security configuration, verify forms still work (CSRF token present, AJAX still
@@ -195,6 +199,7 @@ extend `Api_controller`; every method requires an API key unless listed in `$pub
   user with `get_user_by_activation_code()` and activate by the returned id (see `Auth::activate()`).
 - IonAuth language packs live in `application/language/english|spanish`; the dashboard and setup copy
   is Spanish. Keep new dashboard text consistent and escape it in views.
-- `.github/workflows/ci.yml` runs lint and the smoke suites on PHP 8.4/8.5/8.6 and the integration
+- `.github/workflows/ci.yml` runs PHPCS, PHPStan and PHPUnit on PHP 8.4, lint and the smoke suites on
+  PHP 8.4/8.5/8.6, and the integration
   suite on PHP 8.4 with MariaDB, once with file sessions and once with database sessions (including
   dashboard query counts).

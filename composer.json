@@ -33,5 +33,17 @@
 		"vlucas/phpdotenv": "^5.8",
 		"squizlabs/php_codesniffer": "^4.0",
 		"phpstan/phpstan": "^2.3"
+	},
+	"scripts": {
+		"lint:style": "phpcs",
+		"fix:style": "phpcbf",
+		"analyse": "phpstan analyse --no-progress",
+		"test:unit": "phpunit"
+	},
+	"scripts-descriptions": {
+		"lint:style": "Checks formatting with PHP_CodeSniffer (phpcs.xml.dist).",
+		"fix:style": "Fixes formatting with PHP_CodeSniffer.",
+		"analyse": "Runs PHPStan (phpstan.neon.dist).",
+		"test:unit": "Runs the PHPUnit unit tests."
 	}
 }
