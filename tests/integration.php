@@ -504,6 +504,17 @@ try {
     check($memberResult['status'] === 200, 'public member can log in');
     check(http('GET', '/auth/settings')['status'] === 403, 'member cannot access settings');
     check(http('GET', '/auth')['status'] !== 200, 'member cannot access admin dashboard');
+    $changeForm = http('GET', '/auth/change_password');
+    for ($attempt = 1; $attempt <= 6; ++$attempt) {
+        http('POST', '/auth/change_password', csrf($changeForm['body']) + [
+            'old' => $attempt === 6 ? 'PublicStrongPassword123!' : 'WrongPassword123!',
+            'new' => 'GuessedPassword123!', 'new_confirm' => 'GuessedPassword123!',
+        ]);
+    }
+    $publicHash = $conn->query("SELECT password FROM users WHERE email='public@example.test'")->fetch_assoc()['password'];
+    check(password_verify('PublicStrongPassword123!', $publicHash),
+        'password changes stop checking the current password after repeated failures');
+
     // 4 x maximum_login_attempts (5) failures recorded from this address, each for another account.
     $conn->query('DELETE FROM login_attempts');
     $failure = $conn->prepare('INSERT INTO login_attempts (ip_address, login, time) VALUES (?, ?, ?)');

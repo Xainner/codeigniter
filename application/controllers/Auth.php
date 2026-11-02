@@ -232,6 +232,14 @@ class Auth extends MY_Controller
 		{
 			$identity = $this->session->userdata('identity');
 
+			// Shares the budget of the current-password check on the profile form.
+			$this->load->model('Rate_limiter_model');
+			if (!$this->Rate_limiter_model->allow('reauth-user', (string) $this->ion_auth->get_user_id(), 5, 900))
+			{
+				$this->session->set_flashdata('message', 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.');
+				redirect('auth/change_password', 'refresh');
+			}
+
 			$change = $this->ion_auth->change_password($identity, $this->input->post('old'), $this->input->post('new'));
 
 			if ($change)
