@@ -14,7 +14,7 @@
 		"ext-mysqli": "*",
 		"ext-mbstring": "*",
 		"ext-xml": "*",
-		"pocketarc/codeigniter": "^3.4.5",
+		"pocketarc/codeigniter": "^3.4.7",
 		"phpmailer/phpmailer": "^7.1.1",
 		"chriskacerguis/codeigniter-restserver": "^3.1"
 	},

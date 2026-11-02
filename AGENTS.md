@@ -4,7 +4,7 @@ Project rules for AI agents and developers.
 
 ## Stack
 
-- **Framework**: CodeIgniter (`pocketarc/codeigniter` 3.4.5) installed by Composer in `vendor/pocketarc/codeigniter/system/`.
+- **Framework**: CodeIgniter (`pocketarc/codeigniter` 3.4.7) installed by Composer in `vendor/pocketarc/codeigniter/system/`.
 - **Auth**: IonAuth in `application/third_party/ion_auth` (registered as a package in `autoload.php`).
 - **PHP**: >= 8.4 with `curl`, `openssl`, `gd`, `mbstring`, `mysqli` and `xml`.
 - **Email**: PHPMailer 7.1 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API). The web entry point requires Composer dependencies.

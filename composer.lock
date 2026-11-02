@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2d8c5992b74fa2c4504cc6b49be0955b",
+    "content-hash": "d28bb4750d6feb33afcd6195235cfd92",
     "packages": [
         {
             "name": "chriskacerguis/codeigniter-restserver",
@@ -127,16 +127,16 @@
         },
         {
             "name": "pocketarc/codeigniter",
-            "version": "3.4.5",
+            "version": "3.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/pocketarc/codeigniter.git",
-                "reference": "795dc3f0411f2101f3b624f71cb19937efd90f37"
+                "reference": "67486ece9605a7bcce0bc81d9b79e13ec5460251"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/pocketarc/codeigniter/zipball/795dc3f0411f2101f3b624f71cb19937efd90f37",
-                "reference": "795dc3f0411f2101f3b624f71cb19937efd90f37",
+                "url": "https://api.github.com/repos/pocketarc/codeigniter/zipball/67486ece9605a7bcce0bc81d9b79e13ec5460251",
+                "reference": "67486ece9605a7bcce0bc81d9b79e13ec5460251",
                 "shasum": ""
             },
             "require": {
@@ -160,7 +160,7 @@
                 "issues": "https://github.com/pocketarc/codeigniter/issues",
                 "source": "https://github.com/pocketarc/codeigniter"
             },
-            "time": "2026-09-14T12:11:28+00:00"
+            "time": "2026-11-02T12:37:31+00:00"
         }
     ],
     "packages-dev": [],
