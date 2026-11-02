@@ -367,6 +367,9 @@ try {
 
     $logo = tempnam(sys_get_temp_dir(), 'ci-logo-');
     $image = imagecreatetruecolor(16, 16);
+    imagealphablending($image, false);
+    imagesavealpha($image, true);
+    imagefill($image, 0, 0, imagecolorallocatealpha($image, 0, 0, 0, 127));
     imagepng($image, $logo);
     imagedestroy($image);
     $settings = http('GET', '/auth/settings');
@@ -376,9 +379,12 @@ try {
     check(redirected(http('POST', '/auth/settings', $withLogo)), 'admin uploads brand logo');
     @unlink($logo);
     $logoResponse = http('GET', '/brand/logo');
+    $servedLogo = @imagecreatefromstring($logoResponse['body']);
     check($logoResponse['status'] === 200 && str_contains($logoResponse['headers'], 'image/png')
         && getimagesizefromstring($logoResponse['body'])[0] === 16,
         'logo streams from private storage');
+    check($servedLogo !== false && imagecolorsforindex($servedLogo, imagecolorat($servedLogo, 0, 0))['alpha'] === 127,
+        'logo keeps its transparency');
     $badLogo = tempnam(sys_get_temp_dir(), 'ci-bad-logo-');
     file_put_contents($badLogo, 'not an image');
     $settings = http('GET', '/auth/settings');

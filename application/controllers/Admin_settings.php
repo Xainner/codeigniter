@@ -174,6 +174,9 @@ class Admin_settings extends MY_Controller
         if (!$image) {
             throw new RuntimeException('No se pudo leer el logo.');
         }
+        // GD drops the alpha channel on save unless told to keep it.
+        imagealphablending($image, FALSE);
+        imagesavealpha($image, TRUE);
         $directory = APPPATH . '../storage/brand';
         if (!is_dir($directory) && !mkdir($directory, 0700, TRUE)) {
             imagedestroy($image);
