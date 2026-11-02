@@ -660,6 +660,8 @@ try {
             && array_diff(capturedMessages(), $before) === [],
             'inactive accounts get the uniform recovery response and no mail');
         $recoveryBody = quoted_printable_decode($knownMail['body']);
+        check(str_contains($recoveryBody, 'Restablece tu contraseña') && str_contains($recoveryBody, 'caduca en 30 minutos'),
+            'recovery mail uses the branded template');
         if (!preg_match('~https?://[^"\s<>]+/auth/reset_password/[^"\s<>]+~', $recoveryBody, $match)) {
             throw new RuntimeException('Recovery link absent from captured mail');
         }
