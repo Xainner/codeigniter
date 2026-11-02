@@ -3,6 +3,7 @@
 -- Upgrade existing databases with the upgrade_*.sql scripts instead.
 
 -- Drop the tables that reference users first so this script can also rebuild an existing schema.
+DROP TABLE IF EXISTS `api_keys`;
 DROP TABLE IF EXISTS `user_mfa_recovery_codes`;
 DROP TABLE IF EXISTS `user_mfa`;
 DROP TABLE IF EXISTS `users_groups`;
@@ -158,4 +159,20 @@ CREATE TABLE `user_mfa_recovery_codes` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uc_user_mfa_recovery_code` (`user_id`, `code_hash`),
   CONSTRAINT `fk_user_mfa_recovery_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- REST API keys: only an HMAC of each key is stored; the last four characters help to tell them apart.
+CREATE TABLE `api_keys` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) unsigned NOT NULL,
+  `name` varchar(80) NOT NULL,
+  `token_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `token_hint` char(4) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  `last_used_at` int unsigned DEFAULT NULL,
+  `revoked_at` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uc_api_keys_token_hash` (`token_hash`),
+  KEY `idx_api_keys_user` (`user_id`),
+  CONSTRAINT `fk_api_keys_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

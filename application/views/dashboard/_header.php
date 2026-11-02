@@ -43,6 +43,7 @@ $nav_link = static function ($key, $label, $icon, $url) use ($active_nav) {
             <?php echo $nav_link('users', 'Usuarios', '◫', site_url('auth')); ?>
             <?php echo $nav_link('groups', 'Grupos', '◇', site_url('auth') . '#groups'); ?>
             <?php echo $nav_link('audit', 'Auditoría', '☰', site_url('auth/audit')); ?>
+            <?php echo $nav_link('api_keys', 'API', '⌘', site_url('auth/api-keys')); ?>
             <?php echo $nav_link('settings', 'Configuración', '⚙', site_url('auth/settings')); ?>
             <?php endif; ?>
             <?php echo $nav_link('profile', 'Mi perfil', '◉', site_url('auth/profile')); ?>

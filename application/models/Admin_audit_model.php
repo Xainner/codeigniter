@@ -41,6 +41,7 @@ class Admin_audit_model extends CI_Model
 
         $user_ids = [];
         $group_ids = [];
+        $key_ids = [];
         foreach ($entries as $entry) {
             $details = json_decode((string) $entry->details, TRUE);
             $details = is_array($details) ? $details : [];
@@ -52,16 +53,19 @@ class Admin_audit_model extends CI_Model
                 $user_ids[] = (int) $entry->target_id;
             } elseif ($entry->target_type === 'group') {
                 $group_ids[] = (int) $entry->target_id;
+            } elseif ($entry->target_type === 'api_key') {
+                $key_ids[] = (int) $entry->target_id;
             }
             array_push($group_ids, ...$entry->group_ids);
         }
         $emails = $this->names('users', 'email', $user_ids);
         $groups = $this->names('groups', 'name', $group_ids);
+        $keys = $this->names('api_keys', 'name', $key_ids);
 
         foreach ($entries as $entry) {
             $entry->actor_email = $emails[(int) $entry->actor_user_id] ?? NULL;
-            $entry->target_label = $entry->target_type === 'user' ? ($emails[(int) $entry->target_id] ?? NULL)
-                : ($entry->target_type === 'group' ? ($groups[(int) $entry->target_id] ?? NULL) : NULL);
+            $labels = ['user' => $emails, 'group' => $groups, 'api_key' => $keys];
+            $entry->target_label = $labels[$entry->target_type][(int) $entry->target_id] ?? NULL;
             $entry->group_names = array_map(static function ($id) use ($groups) {
                 return $groups[$id] ?? '#' . $id;
             }, $entry->group_ids);

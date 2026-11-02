@@ -45,9 +45,13 @@ El servidor de desarrollo solo sirve los tipos de archivo estatico permitidos de
 - `/auth/settings`: registro, seguridad, SMTP y marca; los cambios se auditan.
 - `/auth/register`: registro publico desactivado por defecto; devuelve 404 mientras siga desactivado.
 - `/auth/forgot_password`: recuperacion de contraseña.
-- `/api/ping`: devuelve unicamente `{"status":"ok"}` en JSON.
+- `/auth/api-keys`: claves de la API (se muestran una sola vez y se guardan como huella).
+- `/api/ping`: devuelve unicamente `{"status":"ok"}` en JSON; no requiere clave.
+- `/api/me`: ejemplo autenticado; devuelve el propietario de la clave enviada en `X-API-Key`.
 
-Para actualizar una instalación previa, haz una copia de la base y ejecuta `database/upgrade_auth_settings_20260923.sql` y después `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql` y `database/upgrade_add_two_factor_20261102.sql`. Las migraciones conservan usuarios existentes y marcan el asistente como completado. Después cambia el document root a `public/`.
+Los endpoints de `api/` se autentican con la cabecera `X-API-Key` y nunca con la sesión del navegador, por eso quedan fuera de la comprobación CSRF. Para crear endpoints nuevos extiende `Api_controller` (`application/core/Api_controller.php`) y declara en `$public_methods` solo los que no deban pedir clave.
+
+Para actualizar una instalación previa, haz una copia de la base y ejecuta `database/upgrade_auth_settings_20260923.sql` y después `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql`, `database/upgrade_add_two_factor_20261102.sql` y `database/upgrade_add_api_keys_20261102.sql`. Las migraciones conservan usuarios existentes y marcan el asistente como completado. Después cambia el document root a `public/`.
 
 Las sesiones quedan ligadas a la contraseña con la que se iniciaron: cualquier cambio de contraseña cierra las demás sesiones de esa cuenta. Tras desplegar esta versión, las sesiones abiertas previamente deben iniciar sesión una vez más.
 

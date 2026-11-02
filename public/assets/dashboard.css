@@ -169,6 +169,10 @@ input::placeholder { color: #9eabba; }
 .qr-code { display: block; width: 220px; max-width: 100%; height: auto; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .secret-key, .recovery-codes code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; font-weight: 650; letter-spacing: .04em; }
 .secret-key { display: inline-block; margin-top: 8px; padding: 9px 12px; border-radius: 8px; background: var(--canvas); color: var(--ink); word-break: break-all; }
+.token-box { padding: 20px 24px; }
+.token-box code { display: block; padding: 12px 14px; border-radius: 8px; background: var(--canvas); color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; font-weight: 650; word-break: break-all; }
+.new-token { border-color: #b8dcce; }
+.page-description code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .95em; }
 .stack-form + .stack-form { margin-top: 18px; }
 .stack-form > .form-section:last-child { border-bottom: 0; }
 .recovery-panel { background: #fffbf2; }

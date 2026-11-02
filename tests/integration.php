@@ -120,6 +120,26 @@ function totp(string $secret, int $time): string
     return str_pad((string) ($value % 1000000), 6, '0', STR_PAD_LEFT);
 }
 
+function api(string $method, string $path, string $key = ''): array
+{
+    global $base;
+    $curl = curl_init($base . $path);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => $key === '' ? ['Accept: application/json'] : ['Accept: application/json', 'X-API-Key: ' . $key],
+    ]);
+    if ($method === 'POST') {
+        curl_setopt($curl, CURLOPT_POSTFIELDS, '');
+    }
+    $body = curl_exec($curl);
+    if ($body === false) {
+        throw new RuntimeException('API request failed: ' . curl_error($curl));
+    }
+    return ['status' => curl_getinfo($curl, CURLINFO_RESPONSE_CODE), 'body' => $body];
+}
+
 /** Fetches a page as another browser that presents only the given cookies. */
 function withCookie(string $path, string $cookie): array
 {
@@ -491,6 +511,33 @@ try {
     check($afterReset['status'] === 200 && str_ends_with(json_decode($afterReset['body'], true)['redirect'] ?? '', '/auth/profile'),
         'after a reset the member signs in with the password alone');
     $cookieFile = $adminCookieFile;
+
+    check(api('GET', '/api/me')['status'] === 401 && api('GET', '/api/me', 'ak_' . str_repeat('0', 48))['status'] === 401,
+        'API endpoints other than ping require a valid key');
+    $keysPage = http('GET', '/auth/api-keys');
+    $createdKey = http('POST', '/auth/api-keys/create', csrf($keysPage['body']) + [
+        'auth_nonce' => hidden($keysPage['body'], 'auth_nonce'), 'name' => 'Integración de prueba',
+    ]);
+    if (!preg_match('/data-api-token>(ak_[0-9a-f]{48})</', $createdKey['body'], $match)) {
+        throw new RuntimeException('New API key absent from the page');
+    }
+    $apiKey = $match[1];
+    $keyRow = $conn->query("SELECT id, token_hash FROM api_keys WHERE name='Integración de prueba'")->fetch_assoc();
+    check($keyRow && $keyRow['token_hash'] !== $apiKey && !str_contains($keyRow['token_hash'], substr($apiKey, 3)),
+        'API keys are stored only as hashes');
+    $me = api('GET', '/api/me', $apiKey);
+    check($me['status'] === 200 && (json_decode($me['body'], true)['email'] ?? '') === 'ada@example.test',
+        'an API key authenticates as its owner');
+    $apiPost = api('POST', '/api/me', $apiKey);
+    check($apiPost['status'] === 405 && is_array(json_decode($apiPost['body'], true)),
+        'API requests are not subject to the CSRF cookie check');
+    $keysPage = http('GET', '/auth/api-keys');
+    $revokedKey = http('POST', '/auth/api-keys/revoke/' . (int) $keyRow['id'], csrf($keysPage['body']) + [
+        'auth_nonce' => hidden($keysPage['body'], 'auth_nonce'),
+    ]);
+    $keyAudit = (int) $conn->query("SELECT COUNT(*) AS total FROM admin_audit WHERE action IN ('api_key.create', 'api_key.revoke') AND target_id=" . (int) $keyRow['id'])->fetch_assoc()['total'];
+    check(redirected($revokedKey) && api('GET', '/api/me', $apiKey)['status'] === 401 && $keyAudit === 2,
+        'revoked API keys stop working and both changes are audited');
 
     $logo = tempnam(sys_get_temp_dir(), 'ci-logo-');
     $image = imagecreatetruecolor(16, 16);

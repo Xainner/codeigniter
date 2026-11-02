@@ -1,24 +1,19 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-use chriskacerguis\RestServer\RestController;
+require_once APPPATH . 'core/Api_controller.php';
 
 /**
- * Class Api
+ * Example REST controller. Methods are named <resource>_<verb>; every method
+ * needs an X-API-Key header (created at /auth/api-keys) unless it is listed
+ * in $public_methods.
  *
- * Example REST controller. Requires application/config/rest.php (copied from
- * vendor/chriskacerguis/codeigniter-restserver/src/rest.php).
- *
- *   GET  /api/ping    -> health check (JSON)
- *
- * Extend this controller (or copy it) to build your own API endpoints.
+ *   GET  /api/ping  -> public health check
+ *   GET  /api/me    -> owner of the API key
  */
-class Api extends RestController
+class Api extends Api_controller
 {
-	public function __construct()
-	{
-		parent::__construct();
-	}
+	protected $public_methods = ['ping_get'];
 
 	/**
 	 * Health check endpoint
@@ -29,6 +24,23 @@ class Api extends RestController
 	{
 		$this->response([
 			'status' => 'ok',
-		], RestController::HTTP_OK);
+		], self::HTTP_OK);
+	}
+
+	/**
+	 * The user who owns the API key of this request
+	 *
+	 * @return void
+	 */
+	public function me_get()
+	{
+		$user = $this->db->select('id, email, first_name, last_name')
+			->get_where('users', ['id' => $this->api_user_id])->row();
+		$this->response([
+			'id' => (int) $user->id,
+			'email' => $user->email,
+			'first_name' => $user->first_name,
+			'last_name' => $user->last_name,
+		], self::HTTP_OK);
 	}
 }

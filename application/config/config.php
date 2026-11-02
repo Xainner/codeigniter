@@ -436,7 +436,9 @@ $config['csrf_token_name'] = 'csrf_test_name';
 $config['csrf_cookie_name'] = 'csrf_cookie_name';
 $config['csrf_expire'] = 7200;
 $config['csrf_regenerate'] = FALSE;
-$config['csrf_exclude_uris'] = array();
+// API requests authenticate with an X-API-Key header and never with the
+// session cookie (see application/core/Api_controller.php).
+$config['csrf_exclude_uris'] = array('api/.*');
 
 /*
 |--------------------------------------------------------------------------

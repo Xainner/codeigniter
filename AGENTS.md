@@ -10,7 +10,8 @@ Project rules for AI agents and developers.
 - **2FA**: TOTP via `spomky-labs/otphp` with QR codes from `bacon/bacon-qr-code`, wrapped by
   `application/libraries/Two_factor.php`.
 - **Email**: PHPMailer 7.1 via `application/libraries/MY_Email.php` (extends `CI_Email`, same API). The web entry point requires Composer dependencies.
-- **API**: `chriskacerguis/codeigniter-restserver` — config in `application/config/rest.php`, example controller `application/controllers/Api.php`.
+- **API**: `chriskacerguis/codeigniter-restserver` — config in `application/config/rest.php`. API controllers extend
+  `application/core/Api_controller.php` (X-API-Key authentication); example controller `application/controllers/Api.php`.
 - **Composer**: autoloads root `vendor/autoload.php`. Commit `composer.lock` and keep Composer's platform PHP at 8.4.
 
 ## Quick start
@@ -26,18 +27,20 @@ php -S localhost:8000 -t public public/router.php
 2. Import `database/database.sql` into an empty database. Set a random `APP_SETUP_TOKEN` of at least 32 characters, then create the first administrator at `/auth/setup`. The wizard permanently closes after completion.
 3. Configure and test SMTP from `/auth/settings`. Public registration starts disabled.
 
-Useful URLs: `/auth`, `/auth/audit`, `/auth/profile`, `/auth/security`, `/auth/settings`, `/auth/login`, `/auth/setup`, `/auth/register` (when enabled), `/auth/forgot_password`, `/api/ping`.
+Useful URLs: `/auth`, `/auth/audit`, `/auth/api-keys`, `/auth/profile`, `/auth/security`, `/auth/settings`, `/auth/login`, `/auth/setup`, `/auth/register` (when enabled), `/auth/forgot_password`, `/api/ping`.
 
 ## Architecture
 
 ```
 application/
   controllers/   Auth, Setup, Account_security, Admin_users, Admin_groups, Admin_settings, Admin_audit,
-                 Brand, Api, Welcome
-  models/        App_settings_model, Admin_user_model, Admin_audit_model, Rate_limiter_model, User_mfa_model
+                 Admin_api_keys, Brand, Api, Welcome
+  models/        App_settings_model, Admin_user_model, Admin_audit_model, Rate_limiter_model, User_mfa_model,
+                 Api_key_model
   libraries/     MY_Email (PHPMailer transport for CI_Email), Secret_box (purpose-bound encryption),
                  Two_factor (TOTP and recovery codes), Password_policy (zxcvbn strength check)
-  core/          MY_Controller (settings, load_auth(), shared auth helpers), MY_Exceptions (HTML error escaping)
+  core/          MY_Controller (settings, load_auth(), shared auth helpers), MY_Exceptions (HTML error escaping),
+                 Api_controller (API key authentication for REST controllers)
   config/        database.php, email.php, rest.php, routes.php, config.php (subclass_prefix)
   views/         auth/, dashboard/, errors/, welcome_message.php
   language/      english/ and spanish/ packs for auth, ion_auth, rest; spanish/ also carries the CI3
@@ -51,7 +54,8 @@ vendor/          Composer packages, including PocketArc system/ (ignored by Git)
 Conventions: controllers that need authentication extend `MY_Controller` and call `$this->load_auth()`
 instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
 `register_active_user()` from `MY_Controller` rather than re-implementing them. `Auth` fills
-`$this->data` (title, message, per-field input arrays) and renders through `_render_page()`. REST endpoints are controller methods named `<resource>_<verb>` (e.g. `ping_get`).
+`$this->data` (title, message, per-field input arrays) and renders through `_render_page()`. REST endpoints are controller methods named `<resource>_<verb>` (e.g. `ping_get`) in controllers that
+extend `Api_controller`; every method requires an API key unless listed in `$public_methods`.
 
 ## Git workflow
 
@@ -138,6 +142,9 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
   attempts share the `mfa-user` limit, and remember-me cookies are issued only after the second
   step. Enabling, disabling and regenerating codes require the current password; resets by an
   administrator and self-service changes are audited.
+- API keys (`/auth/api-keys`) are shown once and stored as HMACs (`Api_key_model`); `api/` routes are
+  excluded from CSRF because they authenticate with `X-API-Key` only. Never read the session in API
+  controllers.
 - Account and group administration is recorded in `admin_audit` (field names and ids only, never
   personal values or secrets); settings changes go to `settings_audit`.
 - `public/index.php` sends a Content-Security-Policy with `script-src 'self'`: keep JavaScript in
@@ -171,8 +178,8 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
   SMTP is configured and verified in the dashboard; recovery reports unavailable until then.
 - Use `database/upgrade_auth_settings_20260923.sql` for existing databases. It marks setup complete
   when users already exist, so existing installations cannot reopen the setup wizard. Then apply
-  `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql`
-  and `database/upgrade_add_two_factor_20261102.sql`.
+  `database/upgrade_add_admin_audit_20261010.sql`, `database/upgrade_widen_login_attempts_20261010.sql`,
+  `database/upgrade_add_two_factor_20261102.sql` and `database/upgrade_add_api_keys_20261102.sql`.
 - IonAuth's `activate($id, $code)` compares the id strictly with the string mysqli returns. Resolve the
   user with `get_user_by_activation_code()` and activate by the returned id (see `Auth::activate()`).
 - IonAuth language packs live in `application/language/english|spanish`; the dashboard and setup copy
