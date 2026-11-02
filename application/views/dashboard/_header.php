@@ -20,8 +20,9 @@ $home_url = site_url($show_admin_nav ? 'auth' : '/');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light">
     <title><?php echo html_escape($page_title . ' · ' . $site_name); ?></title>
-    <link rel="stylesheet" href="<?php echo html_escape(base_url('assets/dashboard.css')); ?>">
-    <script src="<?php echo html_escape(base_url('assets/dashboard.js')); ?>" defer></script>
+    <link rel="icon" href="<?php echo html_escape(asset_url('favicon.ico')); ?>" sizes="16x16 32x32 48x48">
+    <link rel="stylesheet" href="<?php echo html_escape(asset_url('assets/dashboard.css')); ?>">
+    <script src="<?php echo html_escape(asset_url('assets/dashboard.js')); ?>" defer></script>
 </head>
 <body style="--primary: <?php echo html_escape($brand_color); ?>; --primary-dark: color-mix(in srgb, <?php echo html_escape($brand_color); ?>, #000 17%);">
 <a class="skip-link" href="#main-content">Saltar al contenido</a>

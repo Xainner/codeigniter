@@ -158,6 +158,11 @@ try {
 
     $login = http('GET', '/auth/login');
     check($login['status'] === 200, 'login page opens');
+    check(str_contains($login['body'], 'assets/auth.css?v=') && str_contains($login['body'], 'assets/auth.js?v='),
+        'asset URLs carry a version for cache busting');
+    $favicon = http('GET', '/favicon.ico');
+    check($favicon['status'] === 200 && str_starts_with($favicon['body'], "\x00\x00\x01\x00"),
+        'favicon is served as a static file');
     check(str_contains($login['headers'], 'X-Frame-Options: DENY')
         && str_contains($login['headers'], 'X-Content-Type-Options: nosniff')
         && str_contains($login['headers'], "Content-Security-Policy: default-src 'self'; script-src 'self';"),

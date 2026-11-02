@@ -73,7 +73,8 @@
         $brandColor = preg_match('/^#[0-9a-fA-F]{6}$/D', $brandColor) ? $brandColor : '#4f46e5';
         $siteName = (string) ($this->app_settings['site_name'] ?? 'CodeIgniter');
     ?>
-    <link rel="stylesheet" href="<?php echo html_escape(base_url('assets/auth.css')); ?>">
+    <link rel="icon" href="<?php echo html_escape(asset_url('favicon.ico')); ?>" sizes="16x16 32x32 48x48">
+    <link rel="stylesheet" href="<?php echo html_escape(asset_url('assets/auth.css')); ?>">
 </head>
 <body class="auth-page auth-<?php echo html_escape($auth_variant); ?>" style="--primary: <?php echo html_escape($brandColor); ?>">
     <main class="auth-shell">
@@ -229,6 +230,6 @@
         </section>
     </main>
 
-    <script src="<?php echo html_escape(base_url('assets/auth.js')); ?>" defer></script>
+    <script src="<?php echo html_escape(asset_url('assets/auth.js')); ?>" defer></script>
 </body>
 </html>

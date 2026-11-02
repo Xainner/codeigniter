@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Instalación inicial</title>
+    <link rel="icon" href="<?php echo html_escape(asset_url('favicon.ico')); ?>" sizes="16x16 32x32 48x48">
     <style>body{font:16px system-ui,sans-serif;background:#f4f6fb;color:#1f2937;margin:0;padding:2rem}main{max-width:32rem;margin:auto;background:#fff;padding:2rem;border-radius:1rem;box-shadow:0 1rem 3rem #18213a18}label{display:block;margin-top:1rem;font-weight:600}input{box-sizing:border-box;width:100%;padding:.7rem;margin-top:.3rem;border:1px solid #aab2c0;border-radius:.4rem}button{margin-top:1.5rem;padding:.8rem 1.2rem;background:#4f46e5;color:#fff;border:0;border-radius:.4rem;font:inherit}.error{color:#9f1239}</style>
 </head>
 <body><main>
