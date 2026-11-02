@@ -9,6 +9,11 @@ parameters:
         - application/models
     bootstrapFiles:
         - tests/phpstan/bootstrap.php
+    stubFiles:
+        - tests/phpstan/stubs/ion_auth.stub
+    # Set per deployment by CI_ENV; the bootstrap value is only a placeholder.
+    dynamicConstantNames:
+        - ENVIRONMENT
     scanDirectories:
         - vendor/pocketarc/codeigniter/system
         - application/third_party/ion_auth

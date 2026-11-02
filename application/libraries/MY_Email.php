@@ -123,7 +123,9 @@ class MY_Email extends CI_Email
 
 		$this->_pm_from = array('email' => trim($from), 'name' => trim($name));
 
-		return parent::from($from, $name, $return_path);
+		parent::from($from, $name, $return_path);
+
+		return $this;
 	}
 
 	/**
@@ -139,7 +141,9 @@ class MY_Email extends CI_Email
 			$this->_pm_to[] = trim($email);
 		}
 
-		return parent::to($to);
+		parent::to($to);
+
+		return $this;
 	}
 
 	/**
@@ -155,7 +159,9 @@ class MY_Email extends CI_Email
 			$this->_pm_cc[] = trim($email);
 		}
 
-		return parent::cc($cc);
+		parent::cc($cc);
+
+		return $this;
 	}
 
 	/**
@@ -172,7 +178,9 @@ class MY_Email extends CI_Email
 			$this->_pm_bcc[] = trim($email);
 		}
 
-		return parent::bcc($bcc, $limit);
+		parent::bcc($bcc, $limit);
+
+		return $this;
 	}
 
 	/**
@@ -185,7 +193,9 @@ class MY_Email extends CI_Email
 	{
 		$this->_pm_subject = $subject;
 
-		return parent::subject($subject);
+		parent::subject($subject);
+
+		return $this;
 	}
 
 	/**
@@ -198,7 +208,9 @@ class MY_Email extends CI_Email
 	{
 		$this->_pm_body = $body;
 
-		return parent::message($body);
+		parent::message($body);
+
+		return $this;
 	}
 
 	/**
@@ -212,29 +224,35 @@ class MY_Email extends CI_Email
 	 */
 	public function attach($file, $disposition = '', $newname = NULL, $mime = '')
 	{
-		$is_buffered = ($mime !== '');
+		// CI_Email rejects missing files; PHPMailer would otherwise fail at send().
+		if (parent::attach($file, $disposition, $newname, $mime) !== $this)
+		{
+			return FALSE;
+		}
 
 		$this->_pm_attachments[] = array(
 			'file'       => $file,
 			'newname'    => $newname,
 			'disposition'=> empty($disposition) ? 'attachment' : $disposition,
 			'mime'       => $mime,
-			'buffered'   => $is_buffered,
+			'buffered'   => ($mime !== ''),
 		);
 
-		return parent::attach($file, $disposition, $newname, $mime);
+		return $this;
 	}
 
 	/**
 	 * Set plain-text alternative body (for HTML messages)
 	 *
 	 * @param	string	$str
-	 * @return	void
+	 * @return	MY_Email
 	 */
 	public function set_alt_message($str = '')
 	{
 		$this->alt_message = $str;
 		$this->_pm_alt = $str;
+
+		return $this;
 	}
 
 	/**

@@ -77,9 +77,9 @@ $email->to('recipient@example.test');
 $email->cc('copy@example.test');
 $email->bcc('hidden@example.test');
 $email->reply_to('reply@example.test');
-$email->subject('Transport check');
+check($email->subject('Transport check') === $email, 'Setters must return the mailer for chaining');
 $email->message('<p>Hello HTML</p>');
-$email->set_alt_message('Hello text');
+check($email->set_alt_message('Hello text') === $email, 'set_alt_message() must return the mailer for chaining');
 $email->attach('attachment contents', 'attachment', 'check.txt', 'text/plain');
 
 check($email->send(), 'MY_Email failed to build the message');

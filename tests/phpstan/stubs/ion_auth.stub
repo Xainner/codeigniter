@@ -1,0 +1,22 @@
+<?php
+// Types for IonAuth methods whose upstream PHPDoc is imprecise: they return
+// an object or FALSE (documented as object|bool), and the activation code is
+// a string (documented as bool). PHPStan reads these instead of the vendored docs.
+
+class Ion_auth
+{
+	/**
+	 * @param string $code
+	 * @return \stdClass|false
+	 */
+	public function forgotten_password_check($code) {}
+}
+
+class Ion_auth_model
+{
+	/**
+	 * @param string $user_code
+	 * @return \stdClass|false
+	 */
+	public function get_user_by_activation_code($user_code) {}
+}
