@@ -67,7 +67,7 @@ $this->load->view('dashboard/_header', [
                 $last_login = (int) $read($user, 'last_login', 0);
             ?>
             <tr>
-                <td data-label="Usuario"><div class="person"><span class="person-avatar" aria-hidden="true"><?php echo html_escape(strtoupper(substr($name !== '' ? $name : $email, 0, 1))); ?></span><span><strong><?php echo html_escape($name !== '' ? $name : 'Sin nombre'); ?></strong><small><?php echo html_escape($email); ?></small></span></div></td>
+                <td data-label="Usuario"><div class="person"><span class="person-avatar" aria-hidden="true"><?php echo html_escape(mb_strtoupper(mb_substr($name !== '' ? $name : $email, 0, 1))); ?></span><span><strong><?php echo html_escape($name !== '' ? $name : 'Sin nombre'); ?></strong><small><?php echo html_escape($email); ?></small></span></div></td>
                 <td data-label="Grupos"><div class="tag-list"><?php if ($user_groups === []): ?><span class="muted">Sin grupos</span><?php else: ?><?php foreach ($user_groups as $user_group): ?><span class="tag"><?php echo html_escape((string) $read($user_group, 'name')); ?></span><?php endforeach; ?><?php endif; ?></div></td>
                 <td data-label="Estado"><span class="status <?php echo $active ? 'status-active' : 'status-inactive'; ?>"><span aria-hidden="true">●</span><?php echo $active ? 'Activo' : 'Inactivo'; ?></span></td>
                 <td data-label="Último acceso"><?php echo $last_login > 0 ? html_escape(date('d/m/Y H:i', $last_login)) : '<span class="muted">Nunca</span>'; ?></td>

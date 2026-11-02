@@ -76,6 +76,7 @@ function db(): mysqli
     $conn = new mysqli((string) getenv('DB_HOST'), (string) getenv('DB_USER'),
         (string) getenv('DB_PASS'), (string) getenv('DB_NAME'), (int) (getenv('DB_PORT') ?: 3306));
     if ($conn->connect_errno) { throw new RuntimeException($conn->connect_error); }
+    $conn->set_charset('utf8mb4');
     return $conn;
 }
 
@@ -205,6 +206,10 @@ try {
     check($many['status'] === 200 && queryCount($many) === $oneUserQueries,
         'dashboard query count stays constant with more users (' . $oneUserQueries . ' queries)');
     check(str_contains($many['body'], 'Páginas de usuarios'), 'dashboard paginates users');
+    $conn->query("UPDATE users SET first_name='Ángela' WHERE email='fixture30@example.test'");
+    $accented = http('GET', '/auth?q=' . rawurlencode('Ángela'));
+    check(str_contains($accented['body'], '<span class="person-avatar" aria-hidden="true">Á</span>'),
+        'avatars keep accented initials');
     check(http('GET', '/auth/deactivate/1')['status'] === 403, 'GET cannot deactivate users');
 
     $settings = http('GET', '/auth/settings');
