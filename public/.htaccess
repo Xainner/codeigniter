@@ -5,6 +5,11 @@ RewriteEngine On
     Require all denied
 </FilesMatch>
 
+# Only the PHP development server uses this router.
+<Files "router.php">
+    Require all denied
+</Files>
+
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
