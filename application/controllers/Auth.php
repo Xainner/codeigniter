@@ -404,7 +404,11 @@ class Auth extends MY_Controller
 			show_404();
 			return;
 		}
-		if ($this->ion_auth->activate((int) $id, $code)) {
+		// Ion Auth's activate() compares the id strictly with the string mysqli
+		// returns, so an integer id never matched. Check the code here and
+		// activate the account it belongs to.
+		$user = $this->ion_auth->get_user_by_activation_code((string) $code);
+		if ($user && (int) $user->id === (int) $id && $this->ion_auth->activate($user->id)) {
 			$this->session->set_flashdata('message', 'Cuenta activada. Ya puedes iniciar sesión.');
 			redirect('auth/login');
 			return;

@@ -403,7 +403,10 @@ try {
         $activationPath = parse_url(html_entity_decode($match[0]), PHP_URL_PATH);
         $confirm = http('GET', $activationPath);
         check($confirm['status'] === 200, 'activation link requires confirmation');
-        check(redirected(http('POST', $activationPath, csrf($confirm['body']))), 'POST activates account');
+        $activated = http('POST', $activationPath, csrf($confirm['body']));
+        $activeState = $conn->query("SELECT active, activation_selector FROM users WHERE email='activate@example.test'")->fetch_assoc();
+        check(redirected($activated) && (int) $activeState['active'] === 1 && $activeState['activation_selector'] === null,
+            'POST activates account');
 
         $forgot = http('GET', '/auth/forgot_password');
         $before = capturedMessages();
