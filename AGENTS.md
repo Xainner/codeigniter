@@ -35,7 +35,7 @@ Useful URLs: `/auth`, `/auth/audit`, `/auth/api-keys`, `/auth/profile`, `/auth/s
 ```
 application/
   controllers/   Auth, Setup, Account_security, Admin_users, Admin_groups, Admin_settings, Admin_audit,
-                 Admin_api_keys, Brand, Api, Welcome
+                 Admin_api_keys, Brand, Api, Maintenance (CLI only), Welcome
   models/        App_settings_model, Admin_user_model, Admin_audit_model, Rate_limiter_model, User_mfa_model,
                  Api_key_model
   libraries/     MY_Email (PHPMailer transport for CI_Email), Secret_box (purpose-bound encryption),

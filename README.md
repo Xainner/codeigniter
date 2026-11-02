@@ -63,6 +63,16 @@ Cada usuario puede activar la verificación en dos pasos en `/auth/security` con
 
 Además del bloqueo por cuenta, el inicio de sesión rechaza temporalmente una dirección IP que acumula 4 × «Intentos de acceso permitidos» fallos dentro del «Bloqueo temporal», aunque cada intento sea contra una cuenta distinta. Detrás de un proxy configura `TRUSTED_PROXIES`; si no, todos los visitantes comparten ese límite.
 
+## Mantenimiento
+
+Programa la limpieza diaria de contadores de límite caducados, intentos de acceso antiguos y sesiones caducadas (con `SESSION_DRIVER=database`). El proceso necesita las mismas variables de entorno que la web:
+
+```bash
+php public/index.php maintenance cleanup
+```
+
+Por ejemplo, en cron: `17 3 * * * cd /ruta/al/proyecto && php public/index.php maintenance cleanup`.
+
 ## Desarrollo
 
 El framework se instala en `vendor/pocketarc/codeigniter/system/`; no edites `vendor/` directamente. Las extensiones del nucleo pertenecen a `application/core/MY_*`. La correccion de escape de las paginas de error se conserva en `application/core/MY_Exceptions.php`.

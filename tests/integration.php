@@ -743,6 +743,15 @@ try {
     check($sprayed['status'] === 429, 'one address cannot keep failing logins across many accounts');
     $conn->query('DELETE FROM login_attempts');
 
+    $conn->query("INSERT INTO request_limits (key_hash, hits, expires_at) VALUES ('" . str_repeat('e', 64) . "', 1, 1)");
+    $conn->query("INSERT INTO login_attempts (ip_address, login, time) VALUES ('203.0.113.9', 'stale@example.test', " . (time() - 200000) . ')');
+    $cleanup = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/public/index.php')
+        . ' maintenance cleanup 2>&1');
+    $stale = (int) $conn->query("SELECT (SELECT COUNT(*) FROM request_limits WHERE expires_at = 1)"
+        . " + (SELECT COUNT(*) FROM login_attempts WHERE login = 'stale@example.test') AS total")->fetch_assoc()['total'];
+    check(str_starts_with($cleanup, 'Deleted ') && $stale === 0, 'the maintenance command removes expired rows');
+    check(http('GET', '/maintenance/cleanup')['status'] === 404, 'maintenance only runs from the command line');
+
     $ping = http('GET', '/api/ping');
     check($ping['status'] === 200 && json_decode($ping['body'], true) === ['status' => 'ok'],
         'API ping reveals only minimal JSON');
