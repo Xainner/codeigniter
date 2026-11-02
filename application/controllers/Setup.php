@@ -26,7 +26,8 @@ class Setup extends MY_Controller
             $this->form_validation->set_rules('first_name', 'Nombre', 'trim|required|max_length[50]');
             $this->form_validation->set_rules('last_name', 'Apellido', 'trim|required|max_length[50]');
             $this->form_validation->set_rules('email', 'Correo', 'trim|required|valid_email|max_length[254]');
-            $this->form_validation->set_rules('password', 'Contraseña', 'required|min_length[12]|matches[password_confirm]');
+            $this->form_validation->set_rules('password', 'Contraseña', $this->new_password_rules(
+                12, 'password_confirm', $this->input->post(['email', 'first_name', 'last_name'])));
             $this->form_validation->set_rules('password_confirm', 'Confirmación', 'required');
 
             if ($this->form_validation->run() && hash_equals($token, (string) $this->input->post('setup_token'))) {

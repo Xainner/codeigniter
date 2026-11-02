@@ -51,6 +51,8 @@ Para actualizar una instalación previa, haz una copia de la base y ejecuta `dat
 
 Las sesiones quedan ligadas a la contraseña con la que se iniciaron: cualquier cambio de contraseña cierra las demás sesiones de esa cuenta. Tras desplegar esta versión, las sesiones abiertas previamente deben iniciar sesión una vez más.
 
+Las contraseñas nuevas deben cumplir la longitud mínima configurada y además no ser fáciles de adivinar: se rechazan contraseñas comunes, patrones de teclado, secuencias y las que se basan en el nombre o el correo de la cuenta (puntuación zxcvbn de 3 o más).
+
 Cada usuario puede activar la verificación en dos pasos en `/auth/security` con una aplicación TOTP (Google Authenticator, Microsoft Authenticator, 1Password, Aegis…) y recibe 10 códigos de recuperación de un solo uso. Con ella activa, la contraseña sola no inicia sesión y «Recordarme» solo se guarda tras el segundo paso. Un administrador puede restablecerla desde la ficha del usuario (queda auditado) y exigirla a todos los administradores en `/auth/settings`.
 
 Además del bloqueo por cuenta, el inicio de sesión rechaza temporalmente una dirección IP que acumula 4 × «Intentos de acceso permitidos» fallos dentro del «Bloqueo temporal», aunque cada intento sea contra una cuenta distinta. Detrás de un proxy configura `TRUSTED_PROXIES`; si no, todos los visitantes comparten ese límite.

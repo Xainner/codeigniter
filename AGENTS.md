@@ -36,7 +36,7 @@ application/
                  Brand, Api, Welcome
   models/        App_settings_model, Admin_user_model, Admin_audit_model, Rate_limiter_model, User_mfa_model
   libraries/     MY_Email (PHPMailer transport for CI_Email), Secret_box (purpose-bound encryption),
-                 Two_factor (TOTP and recovery codes)
+                 Two_factor (TOTP and recovery codes), Password_policy (zxcvbn strength check)
   core/          MY_Controller (settings, load_auth(), shared auth helpers), MY_Exceptions (HTML error escaping)
   config/        database.php, email.php, rest.php, routes.php, config.php (subclass_prefix)
   views/         auth/, dashboard/, errors/, welcome_message.php
@@ -145,7 +145,9 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
 - Secrets the application stores (SMTP password, TOTP secrets) are sealed with `Secret_box`
   (AES-256-GCM with a per-purpose HKDF subkey of `APP_KEY` and the purpose as associated data).
   Derive HMAC keys with `Secret_box::key($purpose)`; never use `APP_KEY` directly.
-- Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing.
+- Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing. Validate every new
+  password with `new_password_rules()` from `MY_Controller`: besides the minimum length it rejects
+  passwords that `bjeavons/zxcvbn-php` scores below 3, including ones built from the account's data.
 - Production: `display_errors = 0` (`public/index.php` switches error display by `ENVIRONMENT`).
 - Never log sensitive data (passwords, tokens, API keys).
 - Never put real credentials in the repo. The database reads environment variables, and `APP_KEY`

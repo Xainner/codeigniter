@@ -300,6 +300,14 @@ try {
 
     $userForm = http('GET', '/auth/create_user');
     check($userForm['status'] === 200, 'user form opens');
+    $weakUser = http('POST', '/auth/create_user', csrf($userForm['body']) + [
+        'first_name' => 'Grace', 'last_name' => 'Hopper', 'email' => 'grace@example.test',
+        'phone' => '', 'company' => '', 'password' => 'Password1234', 'password_confirm' => 'Password1234',
+        'groups' => ['2'],
+    ]);
+    check($weakUser['status'] === 200 && str_contains($weakUser['body'], 'fácil de adivinar')
+        && (int) $conn->query("SELECT COUNT(*) AS total FROM users WHERE email='grace@example.test'")->fetch_assoc()['total'] === 0,
+        'easily guessed passwords are rejected even when long enough');
     $newUser = http('POST', '/auth/create_user', csrf($userForm['body']) + [
         'first_name' => 'Grace', 'last_name' => 'Hopper', 'email' => 'grace@example.test',
         'phone' => '', 'company' => '', 'password' => 'AnotherStrongPassword123!',

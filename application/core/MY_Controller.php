@@ -141,6 +141,20 @@ class MY_Controller extends CI_Controller
         return $this->ion_auth->is_admin() ? 'auth' : 'auth/profile';
     }
 
+    /**
+     * Rules for choosing a password: long enough, confirmed, and not easy to
+     * guess from common passwords, patterns or the account's own details.
+     */
+    protected function new_password_rules($min_length, $confirm_field, array $context = [])
+    {
+        $this->load->library('password_policy');
+        $this->password_policy->set_context(array_merge($context, [(string) $this->app_settings['site_name']]));
+        $this->form_validation->set_message('password_strength',
+            'La contraseña es fácil de adivinar. Evita contraseñas comunes, secuencias y los datos de la cuenta.');
+        return ['required', 'min_length[' . (int) $min_length . ']', 'matches[' . $confirm_field . ']',
+            ['password_strength', [$this->password_policy, 'strong_enough']]];
+    }
+
     /** Registers an account that is active immediately, whatever the public activation setting. */
     protected function register_active_user($email, $password, array $profile, array $group_ids)
     {

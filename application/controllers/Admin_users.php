@@ -236,8 +236,8 @@ class Admin_users extends MY_Controller
         $this->form_validation->set_rules('email', 'Correo', $email_rules);
         $password = (string) $this->input->post('password');
         if ($creating || $password !== '') {
-            $this->form_validation->set_rules('password', 'Contraseña', 'required|min_length['
-                . $this->app_settings['min_password_length'] . ']|matches[password_confirm]');
+            $this->form_validation->set_rules('password', 'Contraseña', $this->new_password_rules(
+                $this->app_settings['min_password_length'], 'password_confirm', $this->input->post(['email', 'first_name', 'last_name', 'company'])));
             $this->form_validation->set_rules('password_confirm', 'Confirmación', 'required');
         }
     }

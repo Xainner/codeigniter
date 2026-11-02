@@ -294,7 +294,9 @@ class Auth extends MY_Controller
 		$this->require_login();
 
 		$this->form_validation->set_rules('old', $this->lang->line('change_password_validation_old_password_label'), 'required');
-		$this->form_validation->set_rules('new', $this->lang->line('change_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|matches[new_confirm]');
+		$account = $this->ion_auth->user()->row();
+		$this->form_validation->set_rules('new', $this->lang->line('change_password_validation_new_password_label'), $this->new_password_rules(
+			$this->config->item('min_password_length', 'ion_auth'), 'new_confirm', [$account->email, $account->first_name, $account->last_name]));
 		$this->form_validation->set_rules('new_confirm', $this->lang->line('change_password_validation_new_password_confirm_label'), 'required');
 
 		if ($this->form_validation->run() === FALSE)
@@ -432,7 +434,8 @@ class Auth extends MY_Controller
 		{
 			// if the code is valid then display the password reset form
 
-			$this->form_validation->set_rules('new', $this->lang->line('reset_password_validation_new_password_label'), 'required|min_length[' . $this->config->item('min_password_length', 'ion_auth') . ']|matches[new_confirm]');
+			$this->form_validation->set_rules('new', $this->lang->line('reset_password_validation_new_password_label'), $this->new_password_rules(
+				$this->config->item('min_password_length', 'ion_auth'), 'new_confirm', [$user->email, $user->first_name, $user->last_name]));
 			$this->form_validation->set_rules('new_confirm', $this->lang->line('reset_password_validation_new_password_confirm_label'), 'required');
 
 			if ($this->form_validation->run() === FALSE)
@@ -580,7 +583,8 @@ class Auth extends MY_Controller
 		$this->form_validation->set_rules('email', 'Correo', 'trim|required|valid_email|max_length[254]|is_unique[users.email]');
 		$this->form_validation->set_rules('phone', 'Teléfono', 'trim|max_length[20]');
 		$this->form_validation->set_rules('company', 'Empresa', 'trim|max_length[100]');
-		$this->form_validation->set_rules('password', 'Contraseña', 'required|min_length[' . $this->app_settings['min_password_length'] . ']|matches[password_confirm]');
+		$this->form_validation->set_rules('password', 'Contraseña', $this->new_password_rules(
+			$this->app_settings['min_password_length'], 'password_confirm', $this->input->post(['email', 'first_name', 'last_name', 'company'])));
 		$this->form_validation->set_rules('password_confirm', 'Confirmación', 'required');
 		if (!$this->form_validation->run()) {
 			$this->register_response(FALSE, strip_tags(validation_errors()), 422);
