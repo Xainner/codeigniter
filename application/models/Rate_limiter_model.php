@@ -7,7 +7,8 @@ class Rate_limiter_model extends CI_Model
         if (random_int(1, 100) === 1) {
             $this->db->where('expires_at <', time())->delete('request_limits');
         }
-        $key = hash_hmac('sha256', $scope . ':' . $subject, hex2bin((string) getenv('APP_KEY')));
+        $this->load->library('secret_box');
+        $key = hash_hmac('sha256', $scope . ':' . $subject, $this->secret_box->key('rate_limiter'));
         $expires = time() + $seconds;
         $this->db->query(
             'INSERT INTO request_limits (key_hash, hits, expires_at) VALUES (?, 1, ?) '

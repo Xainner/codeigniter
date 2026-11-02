@@ -3,6 +3,7 @@
 /** Settings that an administrator may change without deploying code. */
 class App_settings_model extends CI_Model
 {
+    private const SMTP_PURPOSE = 'app_settings.smtp_password';
     private $smtp_encrypted = NULL;
     private $smtp_plain = NULL;
     private const DEFAULTS = [
@@ -67,15 +68,11 @@ class App_settings_model extends CI_Model
             return '';
         }
         try {
-            $key = $this->secret_key();
-            $encoded = base64_decode($this->smtp_encrypted, TRUE);
-            if ($encoded === FALSE || strlen($encoded) <= 28) {
-                throw new RuntimeException('Invalid SMTP secret');
-            }
-            $nonce = substr($encoded, 0, 12);
-            $tag = substr($encoded, 12, 16);
-            $plain = openssl_decrypt(substr($encoded, 28), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag);
-            if ($plain === FALSE) {
+            $this->load->library('secret_box');
+            $plain = $this->secret_box->is_sealed($this->smtp_encrypted)
+                ? $this->secret_box->open($this->smtp_encrypted, self::SMTP_PURPOSE)
+                : $this->open_legacy($this->smtp_encrypted);
+            if ($plain === NULL) {
                 throw new RuntimeException('Cannot decrypt SMTP secret');
             }
             $this->smtp_plain = $plain;
@@ -102,13 +99,8 @@ class App_settings_model extends CI_Model
                 if ($value === '') {
                     continue;
                 }
-                $nonce = random_bytes(12);
-                $tag = '';
-                $cipher = openssl_encrypt((string) $value, 'aes-256-gcm', $this->secret_key(), OPENSSL_RAW_DATA, $nonce, $tag);
-                if ($cipher === FALSE) {
-                    throw new RuntimeException('Cannot encrypt SMTP secret');
-                }
-                $value = base64_encode($nonce . $tag . $cipher);
+                $this->load->library('secret_box');
+                $value = $this->secret_box->seal((string) $value, self::SMTP_PURPOSE);
                 $changed[] = 'smtp_password';
             } elseif (isset($before[$name]) && ($before[$name] === TRUE ? '1' : ($before[$name] === FALSE ? '0' : (string) $before[$name])) !== (string) $value) {
                 $changed[] = $name;
@@ -157,12 +149,19 @@ class App_settings_model extends CI_Model
         return $this->db->replace('app_settings', ['name' => 'setup_completed', 'value' => '1']);
     }
 
-    private function secret_key()
+    /**
+     * Opens SMTP passwords stored before Secret_box: AES-256-GCM with APP_KEY
+     * used directly and no associated data. Saving a new password replaces them.
+     */
+    private function open_legacy($stored)
     {
         $hex = getenv('APP_KEY');
-        if (!is_string($hex) || !preg_match('/^[0-9a-fA-F]{64}$/D', $hex)) {
-            throw new RuntimeException('APP_KEY must be a 32-byte hexadecimal key');
+        $encoded = base64_decode($stored, TRUE);
+        if (!is_string($hex) || !preg_match('/^[0-9a-fA-F]{64}$/D', $hex) || $encoded === FALSE || strlen($encoded) <= 28) {
+            return NULL;
         }
-        return hex2bin($hex);
+        $plain = openssl_decrypt(substr($encoded, 28), 'aes-256-gcm', hex2bin($hex), OPENSSL_RAW_DATA,
+            substr($encoded, 0, 12), substr($encoded, 12, 16));
+        return $plain === FALSE ? NULL : $plain;
     }
 }

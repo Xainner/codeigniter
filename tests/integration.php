@@ -432,6 +432,16 @@ try {
         $stored = $conn->query("SELECT value FROM app_settings WHERE name='smtp_password'")->fetch_assoc()['value'];
         check($stored !== $smtpValues['smtp_password'] && !str_contains($stored, 'DisposableSmtpPassword'),
             'SMTP password is encrypted at rest');
+        check(str_starts_with($stored, 'v2:'), 'SMTP password is sealed with a purpose-bound key');
+        // Passwords saved before purpose-bound keys (APP_KEY used directly) must keep working.
+        $legacyNonce = random_bytes(12);
+        $legacyTag = '';
+        $legacyCipher = openssl_encrypt($smtpValues['smtp_password'], 'aes-256-gcm', hex2bin((string) getenv('APP_KEY')),
+            OPENSSL_RAW_DATA, $legacyNonce, $legacyTag);
+        $legacyValue = base64_encode($legacyNonce . $legacyTag . $legacyCipher);
+        $legacyUpdate = $conn->prepare("UPDATE app_settings SET value=? WHERE name='smtp_password'");
+        $legacyUpdate->bind_param('s', $legacyValue);
+        $legacyUpdate->execute();
         $settings = http('GET', '/auth/settings');
         check(!str_contains($settings['body'], 'DisposableSmtpPassword'), 'SMTP password is never displayed');
         $before = capturedMessages();
@@ -441,6 +451,7 @@ try {
             'SMTP test sends a message to the administrator');
 
         $settings = http('GET', '/auth/settings');
+        check(str_contains($settings['body'], 'Envío probado'), 'SMTP passwords stored in the previous format still decrypt');
         $smtpValues['csrf_test_name'] = hidden($settings['body'], 'csrf_test_name');
         $smtpValues['email_activation'] = '1';
         unset($smtpValues['smtp_password']);

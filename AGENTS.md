@@ -132,6 +132,9 @@ instead of loading `ion_auth` directly; use `require_admin()`, `csrf_data()` and
   personal values or secrets); settings changes go to `settings_audit`.
 - `public/index.php` sends a Content-Security-Policy with `script-src 'self'`: keep JavaScript in
   `public/assets/` and never add inline scripts or event handler attributes.
+- Secrets the application stores (SMTP password, TOTP secrets) are sealed with `Secret_box`
+  (AES-256-GCM with a per-purpose HKDF subkey of `APP_KEY` and the purpose as associated data).
+  Derive HMAC keys with `Secret_box::key($purpose)`; never use `APP_KEY` directly.
 - Passwords: bcrypt cost 12 (IonAuth config). Never invent custom hashing.
 - Production: `display_errors = 0` (`public/index.php` switches error display by `ENVIRONMENT`).
 - Never log sensitive data (passwords, tokens, API keys).
